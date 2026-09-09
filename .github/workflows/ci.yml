@@ -152,6 +152,48 @@ jobs:
             --no-daemon \
             "${ARGS[@]}"
 
+      # Gradle 缓存命中时只打印 FROM-CACHE，看不出跑了多少断言。
+      # 把 JUnit XML 的统计汇总出来，让「测试确实在跑」有据可查。
+      - name: 汇总单元测试结果
+        run: |
+          set -euo pipefail
+          RESULTS_DIR=app/build/test-results/testDebugUnitTest
+          # 构建缓存命中时 Gradle 会把 XML 从缓存恢复出来；真的没有目录
+          # 说明测试任务根本没执行过，那必须红。
+          if [ ! -d "$RESULTS_DIR" ]; then
+            echo "::error::找不到测试结果目录 $RESULTS_DIR"
+            find app/build -name 'TEST-*.xml' 2>/dev/null | head
+            exit 1
+          fi
+          TOTALS=$(python3 - "$RESULTS_DIR" <<'PY'
+import glob, sys, xml.etree.ElementTree as ET
+tests = failures = errors = skipped = 0
+for path in glob.glob(sys.argv[1] + "/TEST-*.xml"):
+    root = ET.parse(path).getroot()
+    tests += int(root.get("tests", 0))
+    failures += int(root.get("failures", 0))
+    errors += int(root.get("errors", 0))
+    skipped += int(root.get("skipped", 0))
+print(f"{tests} {failures} {errors} {skipped}")
+PY
+)
+          set -- $TOTALS
+          TESTS=$1; FAILURES=$2; ERRORS=$3; SKIPPED=$4
+          echo "单元测试：$TESTS 个，失败 $FAILURES，错误 $ERRORS，跳过 $SKIPPED"
+          {
+            echo "## 单元测试"
+            echo ""
+            echo "共 **$TESTS** 个，失败 $FAILURES，错误 $ERRORS，跳过 $SKIPPED"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$TESTS" -eq 0 ]; then
+            echo "::error::一个测试都没跑，说明测试源集没有被编译"
+            exit 1
+          fi
+          if [ "$FAILURES" -ne 0 ] || [ "$ERRORS" -ne 0 ]; then
+            echo "::error::存在失败的测试"
+            exit 1
+          fi
+
       # Gradle 只在控制台打印第一条 lint 错误，逐条猜会浪费好几轮 CI。
       - name: 失败时输出完整 Lint 报告
         if: failure()
