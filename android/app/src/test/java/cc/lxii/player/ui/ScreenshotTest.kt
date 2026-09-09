@@ -1,6 +1,8 @@
 package cc.lxii.player.ui
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color as AndroidColor
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -138,6 +140,7 @@ class ScreenshotTest {
         )
         compose.setContent {
             LxPlayerTheme(darkTheme = true) {
+                Surface(modifier = Modifier.fillMaxSize()) {
                 NowPlayingScreen(
                     track = demoTracks[1],
                     playing = true,
@@ -157,6 +160,7 @@ class ScreenshotTest {
                     onOpenQueue = {},
                     onCollapse = {},
                 )
+                }
             }
         }
         capture("now-playing")
@@ -187,35 +191,62 @@ class ScreenshotTest {
     }
 
     /**
-     * 抓取根节点并写 PNG。
+     * 抓取根节点，合成到不透明底后写 PNG。
      *
-     * 同时断言画面里至少有 8 种不同颜色：布局失败的界面通常只剩背景色，
-     * 那种截图「看起来有图」，实际什么都没画。
+     * 合成这一步是必须的：直接写 captureToImage 的位图，导出的 PNG
+     * alpha 通道全为 0，用图片查看器打开是一片空白——第一版就踩了这个坑，
+     * 而当时只断言「颜色种类数」，透明图照样通过，等于没验证。
+     *
+     * 断言分两层：
+     *  1. 不透明像素必须占绝大多数（挡住「整张透明」这类失败）；
+     *  2. 颜色种类要够（挡住「只画了背景色」这类布局失败）。
      */
     private fun capture(name: String) {
         compose.waitForIdle()
-        val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
+        val captured = compose.onRoot().captureToImage().asAndroidBitmap()
+
+        // 铺一层不透明底再把画面画上去，得到可直接查看的图。
+        val flattened = Bitmap.createBitmap(
+            captured.width,
+            captured.height,
+            Bitmap.Config.ARGB_8888,
+        )
+        Canvas(flattened).apply {
+            drawColor(AndroidColor.BLACK)
+            drawBitmap(captured, 0f, 0f, null)
+        }
 
         val dir = File("build/screenshots").apply { mkdirs() }
         File(dir, "$name.png").outputStream().use { out ->
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            flattened.compress(Bitmap.CompressFormat.PNG, 100, out)
         }
 
+        var opaque = 0
+        var sampled = 0
         val distinct = HashSet<Int>()
         var y = 0
-        while (y < bitmap.height && distinct.size < 32) {
+        while (y < captured.height) {
             var x = 0
-            while (x < bitmap.width) {
-                distinct += bitmap.getPixel(x, y)
+            while (x < captured.width) {
+                val pixel = captured.getPixel(x, y)
+                sampled++
+                if (AndroidColor.alpha(pixel) > 200) opaque++
+                distinct += pixel
                 x += 7
             }
             y += 7
         }
+
+        val opaqueRatio = opaque.toDouble() / sampled
         assertTrue(
-            "$name 只渲染出 ${distinct.size} 种颜色，界面可能是空的",
-            distinct.size >= 8,
+            "$name 只有 ${(opaqueRatio * 100).toInt()}% 的像素不透明，画面几乎是空的",
+            opaqueRatio > 0.9,
         )
-        assertTrue("$name 尺寸异常", bitmap.width > 300 && bitmap.height > 300)
+        assertTrue(
+            "$name 只渲染出 ${distinct.size} 种颜色，界面可能只画了背景",
+            distinct.size >= 12,
+        )
+        assertTrue("$name 尺寸异常", captured.width > 300 && captured.height > 300)
     }
 }
 
