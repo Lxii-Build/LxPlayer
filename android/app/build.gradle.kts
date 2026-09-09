@@ -149,6 +149,13 @@ kotlin {
     }
 }
 
+// 截图写在 build/screenshots，Gradle 不知道它们是任务产物，
+// 缓存命中时测试整个跳过、图还是上一轮的旧文件——那会让「视觉已验证」
+// 变成看着旧图自我确认。声明成输出目录后，图缺失就会触发重跑。
+tasks.withType<Test>().configureEach {
+    outputs.dir(layout.buildDirectory.dir("screenshots"))
+}
+
 dependencies {
     implementation(libs.androidx.activity.compose)
 
