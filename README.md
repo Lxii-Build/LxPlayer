@@ -39,10 +39,14 @@ APK 只在 GitHub Actions 上构建，本地不需要 Android SDK。工作流会
    作为 `lxplayer-screenshots` 产物上传。每张图断言不透明像素 >90%，
    挡住「渲染成空白却看着有图」。截图目录刻意放在 `build/` 之外并关掉任务缓存——
    否则缓存命中时测试会被跳过，而旧图被一起恢复，上传的就是上一轮的证据
-4. **一次产出 debug 和 release 两个 APK**
-4. 用同一张 PKCS12 给两个变体签名
-5. 用 `apksigner` 提取两者 SHA-256 并逐字节比对，不一致就让任务失败
-6. 把两个 APK 和 R8 mapping 作为 Artifact 上传
+4. **跑风格几何断言**：圆角是否真被裁出、扇形三层是否错开、唱盘包围盒是否为正方形、
+   玻璃是否透出背景色、均衡器是否为三根分离竖条、当前歌词行是否更大。
+   CI 硬性要求这四个风格测试类都必须执行，缺任一就失败——
+   只看测试总数发现不了某个类被静默漏掉
+5. **一次产出 debug 和 release 两个 APK**
+6. 用同一张 PKCS12 给两个变体签名
+7. 用 `apksigner` 提取两者 SHA-256 并逐字节比对，不一致就让任务失败
+8. 把两个 APK 和 R8 mapping 作为 Artifact 上传
 
 固定密钥库在 `android/keystore/lxplayer-debug.p12`（口令 `android`，别名 `lxplayer`），
 证书指纹：

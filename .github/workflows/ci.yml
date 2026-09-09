@@ -198,6 +198,7 @@ jobs:
           for required in \
             cc.lxii.player.ui.ScreenshotTest \
             cc.lxii.player.ui.StyleGeometryTest \
+            cc.lxii.player.ui.ComponentGeometryTest \
             cc.lxii.player.ui.home.FanCoverSpecTest; do
             if [ ! -f "$RESULTS_DIR/TEST-$required.xml" ]; then
               echo "::error::$required 未执行，风格验证不完整"
