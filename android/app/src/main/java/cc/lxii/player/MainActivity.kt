@@ -27,7 +27,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -88,10 +87,15 @@ class MainActivity : ComponentActivity() {
                 Surface(color = MaterialTheme.colorScheme.background) {
                     val player = container.playerController
                     val libraryVm: LibraryViewModel = viewModel(
-                        factory = LibraryViewModel.Factory(container.localSource, player),
+                        factory = LibraryViewModel.Factory(
+                            container.localSource,
+                            player,
+                            container.settings,
+                        ),
                     )
                     val libraryState by libraryVm.state.collectAsState()
                     val featuredIndex by libraryVm.featuredIndex.collectAsState()
+                    val likedIds by libraryVm.likedIds.collectAsState()
                     val currentTrack by player.currentTrack.collectAsState()
                     val isPlaying by player.isPlaying.collectAsState()
                     val positionMs by player.positionMs.collectAsState()
@@ -134,11 +138,21 @@ class MainActivity : ComponentActivity() {
                                 featuredIndex = featuredIndex,
                                 currentTrackId = currentTrack?.id,
                                 isPlaying = isPlaying,
+                                likedIds = likedIds,
                                 onFeaturedIndexChange = libraryVm::onFeaturedIndexChange,
                                 onPlayTrack = { track ->
                                     startPlaybackService()
                                     libraryVm.playFromLibrary(track)
                                 },
+                                onPlayDaily = {
+                                    startPlaybackService()
+                                    libraryVm.playDaily()
+                                },
+                                onPlayShuffled = {
+                                    startPlaybackService()
+                                    libraryVm.playShuffled()
+                                },
+                                onToggleLike = libraryVm::toggleLike,
                                 onRefresh = libraryVm::refresh,
                                 onRequestPermission = {
                                     permissionCallback = { libraryVm.onPermissionResult(it) }
@@ -151,10 +165,12 @@ class MainActivity : ComponentActivity() {
                                 tracks = libraryState.tracks,
                                 currentTrackId = currentTrack?.id,
                                 isPlaying = isPlaying,
+                                likedIds = likedIds,
                                 onPlayTrack = { track ->
                                     startPlaybackService()
                                     libraryVm.playFromLibrary(track)
                                 },
+                                onToggleLike = libraryVm::toggleLike,
                                 contentPadding = padding,
                             )
 
@@ -162,10 +178,12 @@ class MainActivity : ComponentActivity() {
                                 state = libraryState,
                                 currentTrackId = currentTrack?.id,
                                 isPlaying = isPlaying,
+                                likedIds = likedIds,
                                 onPlayTrack = { track ->
                                     startPlaybackService()
                                     libraryVm.playFromLibrary(track)
                                 },
+                                onToggleLike = libraryVm::toggleLike,
                                 onRefresh = libraryVm::refresh,
                                 contentPadding = padding,
                             )
@@ -236,15 +254,16 @@ class MainActivity : ComponentActivity() {
                                 durationMs = durationMs,
                                 repeatMode = repeatMode,
                                 shuffleEnabled = shuffle,
-                                liked = false,
-                                accent = Color(0xFF6B7280),
+                                liked = currentTrack?.globalId in likedIds,
                                 onTogglePlay = player::playPause,
                                 onNext = player::next,
                                 onPrevious = player::previous,
                                 onSeek = player::seekTo,
                                 onCycleRepeat = player::cycleRepeat,
                                 onToggleShuffle = { player.setShuffle(!shuffle) },
-                                onToggleLike = {},
+                                onToggleLike = {
+                                    currentTrack?.let(libraryVm::toggleLike)
+                                },
                                 onOpenQueue = { queueOpen = true },
                                 onCollapse = { nowPlayingOpen = false },
                             )

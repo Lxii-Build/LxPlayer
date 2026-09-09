@@ -34,7 +34,9 @@ fun SearchScreen(
     tracks: List<Track>,
     currentTrackId: String?,
     isPlaying: Boolean,
+    likedIds: Set<String>,
     onPlayTrack: (Track) -> Unit,
+    onToggleLike: (Track) -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
 ) {
@@ -89,7 +91,9 @@ fun SearchScreen(
                 track = track,
                 isCurrent = track.id == currentTrackId,
                 isPlaying = isPlaying,
+                liked = track.globalId in likedIds,
                 onClick = { onPlayTrack(track) },
+                onToggleLike = { onToggleLike(track) },
                 modifier = Modifier.padding(horizontal = 12.dp),
             )
         }

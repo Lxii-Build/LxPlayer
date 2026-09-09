@@ -31,8 +31,12 @@ fun HomeScreen(
     featuredIndex: Int,
     currentTrackId: String?,
     isPlaying: Boolean,
+    likedIds: Set<String>,
     onFeaturedIndexChange: (Int) -> Unit,
     onPlayTrack: (Track) -> Unit,
+    onPlayDaily: () -> Unit,
+    onPlayShuffled: () -> Unit,
+    onToggleLike: (Track) -> Unit,
     onRefresh: () -> Unit,
     onRequestPermission: () -> Unit,
     contentPadding: PaddingValues,
@@ -114,6 +118,17 @@ fun HomeScreen(
                 }
 
                 item {
+                    HeroSection(
+                        tracks = state.tracks,
+                        onPlayDaily = onPlayDaily,
+                        onPlayShuffled = onPlayShuffled,
+                        modifier = Modifier
+                            .padding(horizontal = 20.dp)
+                            .padding(top = 24.dp),
+                    )
+                }
+
+                item {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -137,7 +152,9 @@ fun HomeScreen(
                         track = track,
                         isCurrent = track.id == currentTrackId,
                         isPlaying = isPlaying,
+                        liked = track.globalId in likedIds,
                         onClick = { onPlayTrack(track) },
+                        onToggleLike = { onToggleLike(track) },
                         modifier = Modifier.padding(horizontal = 12.dp),
                     )
                 }

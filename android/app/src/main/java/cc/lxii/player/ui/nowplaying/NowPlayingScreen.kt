@@ -1,6 +1,8 @@
 package cc.lxii.player.ui.nowplaying
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,8 +39,11 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +57,7 @@ import cc.lxii.player.ui.component.CoverArt
 import cc.lxii.player.ui.component.formatDuration
 import cc.lxii.player.ui.theme.LxColors
 import cc.lxii.player.ui.theme.LxRadius
+import cc.lxii.player.ui.theme.rememberCoverAccent
 
 /**
  * 播放页。
@@ -68,7 +74,6 @@ fun NowPlayingScreen(
     repeatMode: RepeatMode,
     shuffleEnabled: Boolean,
     liked: Boolean,
-    accent: Color,
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -84,6 +89,11 @@ fun NowPlayingScreen(
 
     var scrubbing by remember { mutableStateOf(false) }
     var scrubValue by remember { mutableFloatStateOf(0f) }
+    // 方形封面与黑胶唱盘之间切换，点封面即切。
+    var vinylMode by remember { mutableStateOf(false) }
+
+    // 背景色来自当前封面，换歌时 800ms 交叉淡入。
+    val accent by rememberCoverAccent(track.coverUri)
 
     val progress = if (durationMs > 0) {
         (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
@@ -97,13 +107,24 @@ fun NowPlayingScreen(
         modifier = modifier
             .fillMaxSize()
             .background(LxColors.stage)
+            // 上方一团封面色的径向光，而不是整屏线性渐变——
+            // 参考实现的观感来自「顶部一盏灯」，线性渐变会把整个台面染均匀。
             .background(
-                Brush.verticalGradient(
-                    listOf(
-                        accent.copy(alpha = 0.45f),
-                        accent.copy(alpha = 0.12f),
+                Brush.radialGradient(
+                    colors = listOf(
+                        accent.copy(alpha = 0.55f),
+                        accent.copy(alpha = 0.18f),
                         Color.Transparent,
                     ),
+                    center = Offset(0.5f, 0f),
+                    radius = 1600f,
+                ),
+            )
+            .background(
+                Brush.verticalGradient(
+                    0f to Color.Transparent,
+                    0.75f to accent.copy(alpha = 0.10f),
+                    1f to accent.copy(alpha = 0.22f),
                 ),
             ),
     ) {
@@ -137,13 +158,33 @@ fun NowPlayingScreen(
 
             Spacer(Modifier.weight(0.6f))
 
-            CoverArt(
-                uri = track.coverUri,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1f),
-                radius = LxRadius.stageCover,
-            )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { vinylMode = !vinylMode },
+                    ),
+            ) {
+                if (vinylMode) {
+                    VinylStage(coverUri = track.coverUri, playing = playing)
+                } else {
+                    CoverArt(
+                        uri = track.coverUri,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .shadow(
+                                elevation = 28.dp,
+                                shape = RoundedCornerShape(LxRadius.stageCover),
+                                ambientColor = Color.Black,
+                                spotColor = Color.Black,
+                            ),
+                        radius = LxRadius.stageCover,
+                    )
+                }
+            }
 
             Spacer(Modifier.height(32.dp))
 

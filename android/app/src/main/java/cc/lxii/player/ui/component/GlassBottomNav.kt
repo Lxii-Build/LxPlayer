@@ -25,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,9 +62,7 @@ fun GlassBottomNav(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(68.dp)
-                .shadow(18.dp, shape, ambientColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.18f))
-                .clip(shape)
-                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f))
+                .glassSurface(shape = shape, elevation = 18.dp, tintAlpha = 0.70f)
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceEvenly,

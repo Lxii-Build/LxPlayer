@@ -7,9 +7,12 @@ import androidx.media3.common.util.UnstableApi
 import cc.lxii.player.core.player.PlayerController
 import cc.lxii.player.core.source.LocalMusicSource
 import cc.lxii.player.data.model.Track
+import cc.lxii.player.data.prefs.SettingsStore
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class LibraryUiState(
@@ -29,6 +32,7 @@ data class LibraryUiState(
 class LibraryViewModel(
     private val source: LocalMusicSource,
     private val player: PlayerController,
+    private val settings: SettingsStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LibraryUiState())
@@ -36,6 +40,28 @@ class LibraryViewModel(
 
     private val _featuredIndex = MutableStateFlow(0)
     val featuredIndex: StateFlow<Int> = _featuredIndex.asStateFlow()
+
+    val likedIds: StateFlow<Set<String>> = settings.likedTracks
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    fun toggleLike(track: Track) {
+        viewModelScope.launch { settings.toggleLiked(track.globalId) }
+    }
+
+    /** 每日推荐：按扫描顺序整表播放。 */
+    fun playDaily() {
+        val tracks = _state.value.tracks
+        if (tracks.isEmpty()) return
+        player.playQueue(tracks, 0)
+    }
+
+    /** 私人 FM：随机起点 + 打开随机播放。 */
+    fun playShuffled() {
+        val tracks = _state.value.tracks
+        if (tracks.isEmpty()) return
+        player.playQueue(tracks, tracks.indices.random())
+        player.setShuffle(true)
+    }
 
     fun onPermissionResult(granted: Boolean) {
         _state.value = _state.value.copy(permissionGranted = granted)
@@ -91,9 +117,10 @@ class LibraryViewModel(
     class Factory(
         private val source: LocalMusicSource,
         private val player: PlayerController,
+        private val settings: SettingsStore,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            LibraryViewModel(source, player) as T
+            LibraryViewModel(source, player, settings) as T
     }
 }

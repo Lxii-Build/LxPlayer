@@ -9,7 +9,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cc.lxii.player.data.model.Track
 import cc.lxii.player.ui.theme.LocalLxExtraColors
+import cc.lxii.player.ui.theme.LxColors
 import cc.lxii.player.ui.theme.LxRadius
 
 @Composable
@@ -31,7 +33,8 @@ fun TrackRow(
     isPlaying: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    onMore: (() -> Unit)? = null,
+    liked: Boolean = false,
+    onToggleLike: (() -> Unit)? = null,
 ) {
     val shape = RoundedCornerShape(LxRadius.card)
     Row(
@@ -79,12 +82,12 @@ fun TrackRow(
                 modifier = Modifier.padding(end = 4.dp),
             )
         }
-        if (onMore != null) {
-            IconButton(onClick = onMore, modifier = Modifier.size(36.dp)) {
+        if (onToggleLike != null) {
+            IconButton(onClick = onToggleLike, modifier = Modifier.size(36.dp)) {
                 Icon(
-                    Icons.Outlined.MoreVert,
-                    contentDescription = "更多",
-                    tint = LocalLxExtraColors.current.muted,
+                    imageVector = if (liked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                    contentDescription = if (liked) "取消喜欢" else "喜欢",
+                    tint = if (liked) LxColors.liked else LocalLxExtraColors.current.muted,
                 )
             }
         }

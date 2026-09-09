@@ -5,7 +5,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import cc.lxii.player.data.model.Track
@@ -80,9 +79,7 @@ fun MiniPlayer(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .shadow(16.dp, shape)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.94f))
+            .glassSurface(shape = shape, elevation = 16.dp, tintAlpha = 0.78f)
             .clickable(onClick = onOpenNowPlaying)
             .height(64.dp),
     ) {
@@ -110,7 +107,8 @@ fun MiniPlayer(
                     text = track.title,
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    // 胶囊很窄，长歌名截断后看不出是什么歌，改成滚动展示。
+                    modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE),
                 )
                 Text(
                     text = track.artist,

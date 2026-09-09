@@ -24,7 +24,9 @@ fun LibraryScreen(
     state: LibraryUiState,
     currentTrackId: String?,
     isPlaying: Boolean,
+    likedIds: Set<String>,
     onPlayTrack: (Track) -> Unit,
+    onToggleLike: (Track) -> Unit,
     onRefresh: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
@@ -74,7 +76,9 @@ fun LibraryScreen(
                     track = track,
                     isCurrent = track.id == currentTrackId,
                     isPlaying = isPlaying,
+                    liked = track.globalId in likedIds,
                     onClick = { onPlayTrack(track) },
+                    onToggleLike = { onToggleLike(track) },
                     modifier = Modifier.padding(horizontal = 12.dp),
                 )
             }
