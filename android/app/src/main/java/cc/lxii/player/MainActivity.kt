@@ -311,11 +311,13 @@ class MainActivity : ComponentActivity() {
                             queue = queue,
                             currentIndex = currentIndex,
                             isPlaying = isPlaying,
+                            likedIds = likedIds,
                             onPlayAt = { index ->
                                 startPlaybackService()
                                 player.playAt(index)
                             },
                             onRemoveAt = player::removeAt,
+                            onToggleLike = libraryVm::toggleLike,
                             onClear = {
                                 val last = queue.lastIndex
                                 for (i in last downTo 0) player.removeAt(i)

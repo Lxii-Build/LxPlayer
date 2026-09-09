@@ -8,9 +8,15 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import cc.lxii.player.data.model.Track
 import cc.lxii.player.ui.LibraryUiState
+import cc.lxii.player.ui.component.CoverCard
 import cc.lxii.player.ui.component.TrackRow
 import cc.lxii.player.ui.theme.LocalLxExtraColors
 import java.util.Calendar
@@ -129,6 +136,25 @@ fun HomeScreen(
                 }
 
                 item {
+                    SectionHeader(title = "热门单曲")
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        itemsIndexed(
+                            state.tracks.take(10),
+                            key = { _, track -> track.globalId },
+                        ) { index, track ->
+                            CoverCard(
+                                track = track,
+                                rank = index + 1,
+                                onClick = { onPlayTrack(track) },
+                            )
+                        }
+                    }
+                }
+
+                item {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -162,6 +188,33 @@ fun HomeScreen(
         }
 
         item { Spacer(Modifier.height(12.dp)) }
+    }
+}
+
+/** 区块标题：左侧一道主色竖条 + 重字重标题，与参考实现的分区手法一致。 */
+@Composable
+private fun SectionHeader(title: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .padding(top = 28.dp, bottom = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 4.dp, height = 20.dp)
+                .background(
+                    MaterialTheme.colorScheme.primary,
+                    RoundedCornerShape(2.dp),
+                ),
+        )
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.padding(start = 10.dp),
+        )
     }
 }
 

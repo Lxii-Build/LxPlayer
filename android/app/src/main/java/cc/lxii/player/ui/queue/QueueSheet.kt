@@ -37,8 +37,10 @@ fun QueueSheet(
     queue: List<Track>,
     currentIndex: Int,
     isPlaying: Boolean,
+    likedIds: Set<String>,
     onPlayAt: (Int) -> Unit,
     onRemoveAt: (Int) -> Unit,
+    onToggleLike: (Track) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -105,7 +107,9 @@ fun QueueSheet(
                             track = track,
                             isCurrent = index == currentIndex,
                             isPlaying = isPlaying,
+                            liked = track.globalId in likedIds,
                             onClick = { onPlayAt(index) },
+                            onToggleLike = { onToggleLike(track) },
                             modifier = Modifier.weight(1f),
                         )
                         IconButton(
