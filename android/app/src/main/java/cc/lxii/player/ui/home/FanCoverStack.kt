@@ -38,8 +38,8 @@ private data class FanLayer(
  * 所以暴露出来让测试钉住，而不是散落在私有常量里无人看管。
  */
 val FanCoverLayerSpecs: List<FanLayerSpec> = listOf(
-    FanLayerSpec("back", 112, 144, 1, 9, 0.35f, 12f),
-    FanLayerSpec("mid", 120, 160, 18, 4, 0.65f, 5f),
+    FanLayerSpec("back", 112, 144, 36, 0, 0.35f, 12f),
+    FanLayerSpec("mid", 120, 160, 36, 0, 0.65f, 5f),
     FanLayerSpec("front", 128, 176, 36, 0, 1f, -4f),
 )
 
