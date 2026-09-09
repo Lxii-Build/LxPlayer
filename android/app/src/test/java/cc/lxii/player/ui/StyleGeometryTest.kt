@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,7 +22,9 @@ import cc.lxii.player.ui.component.CoverCard
 import cc.lxii.player.ui.component.GlassBottomNav
 import cc.lxii.player.ui.component.LxTab
 import cc.lxii.player.ui.home.FanCoverStack
+import cc.lxii.player.ui.home.FanCoverStackTags
 import cc.lxii.player.ui.nowplaying.VinylStage
+import cc.lxii.player.ui.nowplaying.VinylStageTags
 import cc.lxii.player.ui.theme.LxPlayerTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
