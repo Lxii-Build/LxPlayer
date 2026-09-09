@@ -10,7 +10,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
@@ -211,30 +213,45 @@ class ComponentGeometryTest {
     fun eqBarsRenderThreeSeparateBars() {
         compose.setContent {
             LxPlayerTheme(darkTheme = true) {
-                Box(
-                    modifier = Modifier
-                        .size(60.dp)
-                        .background(Color.Black),
-                ) {
-                    EqBars(playing = false, color = Color.White)
+                Box(modifier = Modifier.background(Color.Black)) {
+                    EqBars(
+                        playing = false,
+                        color = Color.White,
+                        modifier = Modifier.testTag(EQ_TAG),
+                    )
                 }
             }
         }
         compose.waitForIdle()
+
+        // 按组件自身的实际边界取样。
+        // 之前固定用 bitmap.height-3，那一行落在 EqBars（默认 14dp）下方的空白里，
+        // 统计到 0 段——测的是背景，不是组件。
+        val bounds = compose.onNodeWithTag(EQ_TAG).fetchSemanticsNode().boundsInRoot
         val bitmap = compose.onRoot().captureToImage().asAndroidBitmap()
 
-        // 在贴底一行上统计亮区段数：三根条 = 三段
-        val y = bitmap.height - 3
+        // 三根条贴底生长，静止高度最低一档是 0.2，所以在靠底部取样最稳。
+        val y = (bounds.bottom - 2).toInt().coerceIn(0, bitmap.height - 1)
+        val left = bounds.left.toInt().coerceAtLeast(0)
+        val right = bounds.right.toInt().coerceAtMost(bitmap.width)
+
         var segments = 0
         var inBar = false
-        var x = 0
-        while (x < bitmap.width) {
+        var x = left
+        while (x < right) {
             val bright = AndroidColor.red(bitmap.getPixel(x, y)) > 100
             if (bright && !inBar) segments++
             inBar = bright
             x++
         }
-        assertTrue("均衡器应画出 3 根分离的竖条，实测 $segments 段", segments == 3)
+        assertTrue(
+            "均衡器应画出 3 根分离的竖条，实测 $segments 段（取样 y=$y, x=$left..$right）",
+            segments == 3,
+        )
+    }
+
+    private companion object {
+        const val EQ_TAG = "eq-bars"
     }
 
 }
