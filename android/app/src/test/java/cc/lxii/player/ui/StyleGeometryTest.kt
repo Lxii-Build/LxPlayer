@@ -3,12 +3,13 @@ package cc.lxii.player.ui
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color as AndroidColor
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -221,11 +222,11 @@ class StyleGeometryTest {
     fun glassNavLetsBackgroundColorThrough() {
         val frame = render {
             Box(modifier = Modifier.fillMaxSize()) {
-                // 身后铺满强红色
+                // 身后铺满强红色，用来检验玻璃是否真的透光
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .androidxBackground(),
+                        .background(Color(0xFFB03030)),
                 )
                 GlassBottomNav(selected = LxTab.HOME, onSelect = {})
             }
@@ -252,11 +253,3 @@ class StyleGeometryTest {
     }
 }
 
-/** 给测试用的强色背景，用来检验半透明是否真的透过来。 */
-private fun Modifier.androidxBackground(): Modifier =
-    this.then(
-        androidx.compose.foundation.background(
-            androidx.compose.ui.graphics.Color(0xFFB03030),
-            RoundedCornerShape(0.dp),
-        ),
-    )

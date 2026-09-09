@@ -318,8 +318,10 @@ jobs:
 
       # 界面截图是「风格做出来了」的唯一可视证据：
       # 编译通过和单测全绿都无法说明界面长什么样。
+      # 构建成功时截图必须存在（缺失说明渲染没跑，是真问题）；
+      # 构建失败时不强求，否则「编译错误」会被这一步的报错盖住。
       - name: 上传界面渲染截图
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: lxplayer-screenshots-${{ github.sha }}
