@@ -204,12 +204,16 @@ class StyleGeometryTest {
         }
 
         val center = lum(side / 2, side / 2)
+        // 只查左侧与右下三角：右上角被唱臂占据，唱臂本来就该画在那里，
+        // 拿它判断「圆外无内容」会把正确实现判成缺陷。
         val topLeft = lum(6, 6)
         val bottomLeft = lum(6, side - 6)
+        val bottomRight = lum(side - 6, side - 6)
 
         assertTrue("唱盘中心应有内容，实测亮度 $center", center > 24)
         assertTrue("左上角应在圆外（亮度 $topLeft）", topLeft < 24)
         assertTrue("左下角应在圆外（亮度 $bottomLeft）", bottomLeft < 24)
+        assertTrue("右下角应在圆外（亮度 $bottomRight）", bottomRight < 24)
     }
 
     /**

@@ -72,9 +72,13 @@ fun FanCoverStack(
 
 @Composable
 private fun Layer(layer: FanLayer, uri: String?, withShadow: Boolean) {
+    // 顺序要紧：offset 必须在 size 之后。
+    // 写成 offset → size 时位移作用在尺寸未定的元素上，
+    // 会被父容器的 TopEnd 对齐重新吸附回同一个角，
+    // 三层于是完全重合、扇形效果消失（几何断言就是这样抓到的）。
     var modifier: Modifier = Modifier
-        .offset(x = -layer.offsetRight, y = layer.offsetTop)
         .size(width = layer.width, height = layer.height)
+        .offset(x = -layer.offsetRight, y = layer.offsetTop)
         .rotate(layer.rotation)
         .alpha(layer.alpha)
 

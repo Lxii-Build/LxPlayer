@@ -7,7 +7,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.aspectRatio
@@ -25,6 +24,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import cc.lxii.player.ui.component.CoverArt
 
@@ -66,11 +66,12 @@ fun VinylStage(
         Box(
             modifier = Modifier
                 .size(side * 0.86f)
-                .clip(CircleShape)
-                .border(width = 8.dp, color = Color.White.copy(alpha = 0.15f), shape = CircleShape),
+                .clip(CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            // 唱片底盘：深黑加一点径向反光，避免在纯黑台面上糊成一团。
+            // 底盘与外圈都用 Canvas 画在圆内。
+            // Modifier.border(shape = CircleShape) 会把描边渲染进方形布局盒，
+            // 圆外四角可能残留可见像素，唱盘会变成「带角的圆」。
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawCircle(
                     brush = Brush.radialGradient(
@@ -78,6 +79,12 @@ fun VinylStage(
                         center = Offset(size.width * 0.35f, size.height * 0.3f),
                         radius = size.minDimension * 0.75f,
                     ),
+                )
+                val stroke = size.minDimension * 0.03f
+                drawCircle(
+                    color = Color.White.copy(alpha = 0.15f),
+                    radius = size.minDimension / 2f - stroke / 2f,
+                    style = Stroke(width = stroke),
                 )
             }
             CoverArt(
