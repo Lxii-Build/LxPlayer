@@ -78,7 +78,7 @@ jobs:
       - name: 配置 Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
+          packages: 'platform-tools platforms;android-37 build-tools;37.0.0'
 
       # 正式签名密钥库从 Secret 解码落盘。Secret 未配置时跳过，
       # build.gradle.kts 会回退到随仓库提交的固定 PKCS12，

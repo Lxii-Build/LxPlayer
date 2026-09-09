@@ -7,6 +7,7 @@ plugins {
 val androidMinSdkVersion = rootProject.extra["androidMinSdkVersion"] as Int
 val androidTargetSdkVersion = rootProject.extra["androidTargetSdkVersion"] as Int
 val androidCompileSdkVersion = rootProject.extra["androidCompileSdkVersion"] as Int
+val androidCompileSdkVersionMinor = rootProject.extra["androidCompileSdkVersionMinor"] as Int
 val androidBuildToolsVersion = rootProject.extra["androidBuildToolsVersion"] as String
 val androidSourceCompatibility = rootProject.extra["androidSourceCompatibility"] as JavaVersion
 val androidTargetCompatibility = rootProject.extra["androidTargetCompatibility"] as JavaVersion
@@ -47,7 +48,11 @@ val signingKeyPassword = (project.findProperty("KEY_PASSWORD") as String?)
 
 android {
     namespace = "cc.lxii.player"
-    compileSdk = androidCompileSdkVersion
+    compileSdk {
+        version = release(androidCompileSdkVersion) {
+            minorApiLevel = androidCompileSdkVersionMinor
+        }
+    }
     buildToolsVersion = androidBuildToolsVersion
 
     signingConfigs {

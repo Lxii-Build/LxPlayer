@@ -6,11 +6,12 @@ plugins {
 }
 
 // SDK 基线集中在一处，避免 app 模块和 CI 各写一份导致漂移。
-// compileSdk 用 36：CI 的 setup-android 与本机 SDK 都有 android-36，
-// 37 只在部分环境可用，会让「云端能过、别处不能过」。
+// Compose BOM 2026.06.01 / Material3 1.5 要求 compileSdk ≥ 37。
+// targetSdk 仍为 36：compileSdk 只管编译期 API，不改变运行时行为。
 extra["androidMinSdkVersion"] = 28
 extra["androidTargetSdkVersion"] = 36
-extra["androidCompileSdkVersion"] = 36
-extra["androidBuildToolsVersion"] = "36.0.0"
+extra["androidCompileSdkVersion"] = 37
+extra["androidCompileSdkVersionMinor"] = 0
+extra["androidBuildToolsVersion"] = "37.0.0"
 extra["androidSourceCompatibility"] = JavaVersion.VERSION_21
 extra["androidTargetCompatibility"] = JavaVersion.VERSION_21
