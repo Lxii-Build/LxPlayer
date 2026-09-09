@@ -124,6 +124,11 @@ jobs:
           fi
           echo "available=true" >> "$GITHUB_OUTPUT"
 
+      # 先删掉可能从缓存恢复的旧截图：拿上一轮的图说「本轮已验证」
+      # 比没有图更糟。删掉后若测试仍被缓存跳过，截图数量检查会直接失败。
+      - name: 清理上一轮截图
+        run: rm -rf app/build/screenshots
+
       - name: 运行单元测试、Lint，并同时构建 debug 与 release
         id: build
         env:
