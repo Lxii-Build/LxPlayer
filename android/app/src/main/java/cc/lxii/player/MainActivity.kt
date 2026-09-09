@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.util.UnstableApi
 import cc.lxii.player.core.net.ApiClient
 import cc.lxii.player.core.net.ApiException
 import cc.lxii.player.core.player.PlaybackService
@@ -54,6 +55,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@UnstableApi
 class MainActivity : ComponentActivity() {
 
     private val permissionLauncher = registerForActivityResult(

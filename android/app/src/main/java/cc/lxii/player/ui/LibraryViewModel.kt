@@ -3,6 +3,7 @@ package cc.lxii.player.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.util.UnstableApi
 import cc.lxii.player.core.player.PlayerController
 import cc.lxii.player.core.source.LocalMusicSource
 import cc.lxii.player.data.model.Track
@@ -24,6 +25,7 @@ data class LibraryUiState(
  * 播放状态不放这里——它在 [PlayerController] 里以 StateFlow 暴露，
  * 界面直接 collect，避免多一层转发导致状态不同步。
  */
+@UnstableApi
 class LibraryViewModel(
     private val source: LocalMusicSource,
     private val player: PlayerController,

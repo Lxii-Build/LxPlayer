@@ -2,6 +2,7 @@ package cc.lxii.player.core.player
 
 import android.content.Context
 import android.util.Log
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
@@ -16,6 +17,7 @@ import java.io.File
  *  - 目录被另一个进程占用：放弃缓存直接联网播，删除只会破坏那个进程的状态；
  *  - 缓存本身损坏：删掉重开一次，再失败就放弃。
  */
+@UnstableApi
 object MediaCacheFactory {
 
     private const val TAG = "LxCache"

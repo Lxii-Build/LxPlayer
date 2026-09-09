@@ -5,6 +5,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import cc.lxii.player.core.player.policy.QueuePolicy
 import cc.lxii.player.core.player.policy.RepeatMode
@@ -46,6 +47,7 @@ sealed interface PlayerEvent {
  * 把整张列表塞给播放器就没法在每首歌播放前插入解析步骤。
  * 代价是没有无缝衔接（gapless），这是明确接受的取舍。
  */
+@UnstableApi
 class PlayerController private constructor(
     private val context: Context,
     private val source: MusicSource,

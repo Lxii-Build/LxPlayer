@@ -1,6 +1,7 @@
 package cc.lxii.player.core.player
 
 import android.content.Intent
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import cc.lxii.player.LxPlayerApp
@@ -11,6 +12,7 @@ import cc.lxii.player.LxPlayerApp
  * 用官方 [MediaSessionService] 而不是裸 Service + framework MediaSession：
  * 通知栏、媒体键、蓝牙元数据由 Media3 提供，省掉手搓通知与各家 OEM 适配。
  */
+@UnstableApi
 class PlaybackService : MediaSessionService() {
 
     private var session: MediaSession? = null

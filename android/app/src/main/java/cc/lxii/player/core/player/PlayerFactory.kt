@@ -3,6 +3,7 @@ package cc.lxii.player.core.player
 import android.content.Context
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -17,6 +18,7 @@ import androidx.media3.extractor.DefaultExtractorsFactory
  * 这里按音频重新配：起播 1 秒即可出声，同时保留 60 秒回退缓冲，
  * 让用户小幅往回拖动不必重新下载。
  */
+@UnstableApi
 object PlayerFactory {
 
     fun build(context: Context): ExoPlayer {

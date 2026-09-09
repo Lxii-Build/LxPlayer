@@ -125,6 +125,7 @@ jobs:
           echo "available=true" >> "$GITHUB_OUTPUT"
 
       - name: 运行单元测试、Lint，并同时构建 debug 与 release
+        id: build
         env:
           KS_AVAILABLE: ${{ steps.keystore.outputs.available }}
           KS_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -150,6 +151,24 @@ jobs:
             :app:assembleRelease \
             --no-daemon \
             "${ARGS[@]}"
+
+      # Gradle 只在控制台打印第一条 lint 错误，逐条猜会浪费好几轮 CI。
+      - name: 失败时输出完整 Lint 报告
+        if: failure()
+        run: |
+          for f in app/build/reports/lint-results-*.txt \
+                   app/build/intermediates/lint_intermediate_text_report/*/*/lint-results-*.txt; do
+            [ -f "$f" ] || continue
+            echo "===== $f ====="
+            cat "$f"
+          done
+          echo "===== 单测失败详情 ====="
+          for f in app/build/reports/tests/testDebugUnitTest/classes/*.html; do
+            [ -f "$f" ] || continue
+            echo "--- $f"
+          done
+          find app/build/test-results -name '*.xml' -exec grep -l "<failure" {} \; 2>/dev/null \
+            | while read -r x; do echo "--- $x"; cat "$x"; done
 
       - name: 校验 debug 与 release 签名指纹一致
         run: |
