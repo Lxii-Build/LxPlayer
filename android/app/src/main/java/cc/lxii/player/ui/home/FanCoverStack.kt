@@ -31,9 +31,41 @@ private data class FanLayer(
     val rotation: Float,
 )
 
-private val backLayer = FanLayer(112.dp, 144.dp, 1.dp, 9.dp, 0.35f, 12f)
-private val midLayer = FanLayer(120.dp, 160.dp, 18.dp, 4.dp, 0.65f, 5f)
-private val frontLayer = FanLayer(128.dp, 176.dp, 36.dp, 0.dp, 1f, -4f)
+/**
+ * 三层的设计参数，供测试核对。
+ *
+ * 这些数值是复刻参考交互观感的依据，改动会直接改变卡片外观，
+ * 所以暴露出来让测试钉住，而不是散落在私有常量里无人看管。
+ */
+val FanCoverLayerSpecs: List<FanLayerSpec> = listOf(
+    FanLayerSpec("back", 112, 144, 1, 9, 0.35f, 12f),
+    FanLayerSpec("mid", 120, 160, 18, 4, 0.65f, 5f),
+    FanLayerSpec("front", 128, 176, 36, 0, 1f, -4f),
+)
+
+data class FanLayerSpec(
+    val name: String,
+    val widthDp: Int,
+    val heightDp: Int,
+    val offsetRightDp: Int,
+    val offsetTopDp: Int,
+    val alpha: Float,
+    val rotationDegrees: Float,
+)
+
+// 渲染用的层参数从上面那份规格派生，避免「规格改了、画的还是旧值」。
+private fun FanLayerSpec.toLayer() = FanLayer(
+    width = widthDp.dp,
+    height = heightDp.dp,
+    offsetRight = offsetRightDp.dp,
+    offsetTop = offsetTopDp.dp,
+    alpha = alpha,
+    rotation = rotationDegrees,
+)
+
+private val backLayer = FanCoverLayerSpecs[0].toLayer()
+private val midLayer = FanCoverLayerSpecs[1].toLayer()
+private val frontLayer = FanCoverLayerSpecs[2].toLayer()
 
 /** 堆叠区域尺寸。 */
 val FanStackWidth = 160.dp
