@@ -184,6 +184,27 @@ jobs:
           SKIPPED=$(count_attr skipped)
           echo "单元测试：$TESTS 个，失败 $FAILURES，错误 $ERRORS，跳过 $SKIPPED"
 
+          # 逐类列出并强制要求风格相关的三类必须存在。
+          # 只看总数无法发现「渲染或几何测试被静默漏掉」，
+          # 而它们正是风格验证的核心——漏掉就等于没验证。
+          echo "--- 各测试类 ---"
+          for x in "$RESULTS_DIR"/TEST-*.xml; do
+            [ -f "$x" ] || continue
+            cls=$(basename "$x" .xml | sed 's/^TEST-//')
+            n=$({ grep -o 'tests="[0-9]*"' "$x" || true; } | head -1 | grep -o '[0-9]*' || true)
+            echo "  $cls: ${n:-0}"
+          done
+
+          for required in \
+            cc.lxii.player.ui.ScreenshotTest \
+            cc.lxii.player.ui.StyleGeometryTest \
+            cc.lxii.player.ui.home.FanCoverSpecTest; do
+            if [ ! -f "$RESULTS_DIR/TEST-$required.xml" ]; then
+              echo "::error::$required 未执行，风格验证不完整"
+              exit 1
+            fi
+          done
+
           # 截图数量单独确认：渲染测试若被静默跳过，产物会是空的，
           # 那时「风格已验证」就成了空话。
           SHOTS=$(ls app/screenshots/*.png 2>/dev/null | wc -l | tr -d ' ')
