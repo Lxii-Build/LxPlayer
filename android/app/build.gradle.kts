@@ -8,7 +8,6 @@ val androidMinSdkVersion = rootProject.extra["androidMinSdkVersion"] as Int
 val androidTargetSdkVersion = rootProject.extra["androidTargetSdkVersion"] as Int
 val androidCompileSdkVersion = rootProject.extra["androidCompileSdkVersion"] as Int
 val androidCompileSdkVersionMinor = rootProject.extra["androidCompileSdkVersionMinor"] as Int
-val androidBuildToolsVersion = rootProject.extra["androidBuildToolsVersion"] as String
 val androidSourceCompatibility = rootProject.extra["androidSourceCompatibility"] as JavaVersion
 val androidTargetCompatibility = rootProject.extra["androidTargetCompatibility"] as JavaVersion
 
@@ -53,7 +52,8 @@ android {
             minorApiLevel = androidCompileSdkVersionMinor
         }
     }
-    buildToolsVersion = androidBuildToolsVersion
+    // 不固定 buildToolsVersion：CI 上装到的具体小版本可能不同，
+    // 写死会在版本不匹配时直接失败。AGP 会挑一个它支持的版本。
 
     signingConfigs {
         create("unified") {

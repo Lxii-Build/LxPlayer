@@ -78,7 +78,31 @@ jobs:
       - name: 配置 Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-37 build-tools;37.0.0'
+          packages: ''
+
+      # API 37 的平台包名带小版本（android-37.0），不是 android-37。
+      # 这里先查可用包再安装，避免包名猜错时整个任务停在这一步。
+      - name: 安装 SDK 平台与构建工具
+        run: |
+          set -euo pipefail
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          AVAILABLE=$(sdkmanager --list 2>/dev/null | sed -n '/Available Packages/,$p')
+          PLATFORM=$(printf '%s\n' "$AVAILABLE" | grep -oE 'platforms;android-37(\.[0-9]+)?' | sort -V | tail -1)
+          BUILD_TOOLS=$(printf '%s\n' "$AVAILABLE" | grep -oE 'build-tools;37\.[0-9.]+' | sort -V | tail -1)
+          if [ -z "$PLATFORM" ]; then
+            echo "::error::SDK 仓库里找不到 android-37 平台包"
+            sdkmanager --list 2>/dev/null | grep -E 'platforms;android-3[5-9]' | head -20
+            exit 1
+          fi
+          if [ -z "$BUILD_TOOLS" ]; then
+            BUILD_TOOLS=$(printf '%s\n' "$AVAILABLE" | grep -oE 'build-tools;3[6-9]\.[0-9.]+' | sort -V | tail -1)
+          fi
+          echo "安装 $PLATFORM 与 $BUILD_TOOLS"
+          sdkmanager --install "platform-tools" "$PLATFORM" "$BUILD_TOOLS" >/dev/null
+          echo "已安装的平台："
+          ls "$ANDROID_HOME/platforms"
+          echo "已安装的构建工具："
+          ls "$ANDROID_HOME/build-tools"
 
       # 正式签名密钥库从 Secret 解码落盘。Secret 未配置时跳过，
       # build.gradle.kts 会回退到随仓库提交的固定 PKCS12，
