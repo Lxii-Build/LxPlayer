@@ -18,16 +18,28 @@ Android 音乐播放器。视觉参考 Cyrene 的中性灰与玻璃胶囊导航�
 
 ## 构建
 
-APK 只在 GitHub Actions 上构建。工作流会：
+APK 只在 GitHub Actions 上构建，本地不需要 Android SDK。工作流会：
 
-1. 跑后端 `go test` 与 Android JVM 单测、Lint
-2. **一次产出 debug 和 release 两个 APK**
-3. 用同一张 PKCS12 给两个变体签名
-4. 用 `apksigner` 提取两者 SHA-256，不一致则让任务失败
-5. 把两个 APK 和 R8 mapping 作为 Artifact 上传
+1. 跑后端 `go vet` + `go test`
+2. 跑 Android JVM 单测与 Lint，并把测试数量写进 Job Summary（0 个测试直接判失败）
+3. **一次产出 debug 和 release 两个 APK**
+4. 用同一张 PKCS12 给两个变体签名
+5. 用 `apksigner` 提取两者 SHA-256 并逐字节比对，不一致就让任务失败
+6. 把两个 APK 和 R8 mapping 作为 Artifact 上传
 
-固定密钥库在 `android/keystore/lxplayer-debug.p12`（口令 `android`，别名 `lxplayer`）。
-仓库 Secret `ANDROID_KEYSTORE_BASE64` 存在时优先用它，但必须与 debug/release 指向同一文件。
+固定密钥库在 `android/keystore/lxplayer-debug.p12`（口令 `android`，别名 `lxplayer`），
+证书指纹：
+
+```
+CC:4A:58:23:7C:47:B2:7C:87:2C:EB:94:7F:C8:E8:F7:21:1D:55:45:68:8B:BC:A9:65:14:73:A6:1A:71:C8:DD
+```
+
+仓库 Secret `ANDROID_KEYSTORE_BASE64` 存在时优先用它。无论走哪条路径，
+debug 与 release 都指向同一个 `storeFile`，所以两者签名必然一致。
+
+之所以要把 debug 密钥库提交进仓库：CI runner 每次都是全新机器，
+`~/.android/debug.keystore` 会被自动重新生成，导致每次构建的指纹都不同、装不上也覆盖不了。
+密钥库必须是确定的文件，而不是自动生成的。debug 密钥按安卓惯例是公开的。
 
 ## 后端
 

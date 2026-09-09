@@ -34,11 +34,15 @@ Xposed 集成、一起听、真交叉淡化、均衡器、可视化特效、下�
 | 播放 | **media3 1.10.1**，`MediaSessionService` | 与 NeriPlayer 同版本，但用官方 Session（分歧见调研 §3） |
 | 图片 | Coil 3.0.4 | 与 LxDay 一致 |
 | 网络 | OkHttp 4.12.0 | 与 LxDay 一致 |
-| 本地库 | Room 2.8.4 | |
 | 偏好 | DataStore Preferences 1.2.1 | |
 | 取色 | AndroidX Palette | 封面取色驱动播放页背景 |
-| 构建 | AGP 9.3.1 / Gradle 9.7.0 / JDK 21 | 与 LxDay 一致（本机已验证可用） |
-| SDK | compileSdk 36 / minSdk 28 / targetSdk 36 | 本机 SDK 有 android-36；不用 37 避免 CI 与本地不一致 |
+| 构建 | AGP 9.3.1 / Gradle 9.7.0 / JDK 21 | 与 LxDay 一致 |
+| SDK | compileSdk 37 / minSdk 28 / targetSdk 36 | Compose BOM 2026.06.01 的 AAR 要求 compileSdk ≥ 37；targetSdk 保持 36 |
+
+第一版**不引入 Room**：队列跨进程存活可以先用 DataStore 存 id 列表，
+为一张表拉进注解处理器不划算。等真的需要多表关联时再加。
+
+AGP 9 内置 Kotlin 支持，**不能**再套 `org.jetbrains.kotlin.android` 插件（会直接报错拒绝）。
 | 后端 | Go 1.23 + net/http + SQLite | 沿用 LxDay 范式，去掉 Gin 依赖 |
 
 **不引入 miuix**。LxDay 用 miuix 是因为要 HyperOS 风格；LxPlayer 要的是 Cyrene 的
@@ -190,7 +194,6 @@ fun shuffled(queue: List<Track>, currentIndex: Int, seed: Long): QueueMutation
 
 - 睡眠定时：倒计时 / 播完当前，预设 15/30/45/60/90 分钟（`SleepTimerPolicy` 纯函数）
 - 倍速：0.5×–2.0×，`PlaybackParameters(speed, 1f)`
-- 队列跨进程存活：Room 表 `play_queue_state` + `play_queue_track`，变更去抖 1s 后落盘
 
 ## 5. UI 设计
 
@@ -335,12 +338,18 @@ TDD。可在 JVM 上跑的纯逻辑必须先写测试：
 | 目标 | 测试内容 |
 | --- | --- |
 | `QueuePolicy` | 下一首去重与下标修正、移除当前项、移动、随机后还原 |
-| `RepeatPolicy` | 三态循环 |
+| `RepeatPolicy` | 三态循环、播完与手动跳转的差异 |
 | `WakeModePolicy` | http/https/file/content/绝对路径/空串 |
 | `SleepTimerPolicy` | 剩余时间计算、播完当前模式 |
 | `SwipeGesturePolicy` | 12/24/36dp 阈值判定、循环索引换算 |
+| `RequestTokenGuard` | 迟到解析结果被丢弃 |
+| `LxColors` | 色板数值不被顺手改掉 |
+| `filterTracks` | 标题/艺术家/专辑匹配、大小写、空查询 |
 | `SyncMerge` | revision 冲突、快照合并 |
 | Go 后端 | 注册/登录/JWT 校验/token_ver 撤销/快照乐观并发 |
+
+Lint 的 `UnsafeOptInUsageError` 不受编译器 opt-in flag 影响：
+碰 Media3 的类必须显式标注 `@UnstableApi`，否则 `lintDebug` 会拦住构建。
 
 Android 框架强耦合部分（Service、Compose 渲染）不写脆弱的仪器测试，
 靠把决策抽成纯函数来获得覆盖——这是 NeriPlayer `policy/` 模式的核心价值。
