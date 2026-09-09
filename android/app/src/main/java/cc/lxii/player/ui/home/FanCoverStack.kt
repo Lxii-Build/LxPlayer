@@ -86,16 +86,18 @@ fun FanCoverStack(
 
 @Composable
 private fun Layer(layer: FanLayer, uri: String?, withShadow: Boolean, tag: String) {
-    // 顺序要紧：offset 必须在 size 之后。
-    // 写成 offset → size 时位移作用在尺寸未定的元素上，
-    // 会被父容器的 TopEnd 对齐重新吸附回同一个角，
-    // 三层于是完全重合、扇形效果消失（几何断言就是这样抓到的）。
+    // offset 必须在 size 之后：写成 offset → size 时位移作用在尺寸未定的元素上，
+    // 会被父容器的 TopEnd 对齐吸附回同一个角，三层完全重合。
+    //
+    // testTag 放在链末（最内层）：modifier 链里靠前的是外层，
+    // 把 tag 放在 offset 之前会读到「父容器分配的位置」而非位移后的位置，
+    // 断言就测不到 offset 到底有没有生效。
     var modifier: Modifier = Modifier
-        .testTag(tag)
         .size(width = layer.width, height = layer.height)
         .offset(x = -layer.offsetRight, y = layer.offsetTop)
         .rotate(layer.rotation)
         .alpha(layer.alpha)
+        .testTag(tag)
 
     if (withShadow) {
         modifier = modifier.shadow(

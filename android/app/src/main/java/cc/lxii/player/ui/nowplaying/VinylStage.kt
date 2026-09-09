@@ -72,9 +72,9 @@ fun VinylStage(
 
         Box(
             modifier = Modifier
-                .testTag(VinylStageTags.DISC)
                 .size(side * 0.86f)
-                .clip(CircleShape),
+                .clip(CircleShape)
+                .testTag(VinylStageTags.DISC),
             contentAlignment = Alignment.Center,
         ) {
             // 底盘与外圈都用 Canvas 画在圆内。
@@ -112,10 +112,10 @@ fun VinylStage(
         // 唱臂锚在右上角，绕自身左端旋转。
         Box(
             modifier = Modifier
-                .testTag(VinylStageTags.TONEARM)
                 .align(Alignment.TopEnd)
                 .padding(top = side * 0.04f, end = side * 0.06f)
-                .size(width = side * 0.42f, height = side * 0.42f),
+                .size(width = side * 0.42f, height = side * 0.42f)
+                .testTag(VinylStageTags.TONEARM),
         ) {
             Canvas(
                 modifier = Modifier
