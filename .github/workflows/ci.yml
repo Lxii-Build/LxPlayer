@@ -186,38 +186,62 @@ jobs:
             exit 1
           fi
 
+          # 直接抓 64 位十六进制摘要，不依赖 apksigner 的标签文案：
+          # 按字段切分曾把「certificate SHA-256 digest」当成摘要，
+          # 于是两边都拿到同一个标签字符串，比对永远相等——假通过比不通过更危险。
           sha256_of() {
             "$APKSIGNER" verify --print-certs "$1" \
-              | awk -F': ' 'BEGIN{IGNORECASE=1} /SHA-256 digest/{gsub(/ /,"",$2); print toupper($2); exit}'
+              | grep -i 'SHA-256 digest' \
+              | grep -oiE '[0-9a-f]{64}' \
+              | head -1 \
+              | tr 'a-f' 'A-F'
           }
 
           DEBUG_SHA=$(sha256_of "$DEBUG_APK")
           RELEASE_SHA=$(sha256_of "$RELEASE_APK")
 
+          # 长度校验是这个断言的可信度前提：提取失败必须让任务红，
+          # 而不是拿两个空串比出「一致」。
+          for pair in "debug:$DEBUG_SHA" "release:$RELEASE_SHA"; do
+            name=${pair%%:*}
+            value=${pair#*:}
+            if ! printf '%s' "$value" | grep -qE '^[0-9A-F]{64}$'; then
+              echo "::error::$name 的 SHA-256 提取失败（得到 '$value'）"
+              echo "--- apksigner 原始输出 ---"
+              "$APKSIGNER" verify --print-certs "$DEBUG_APK"
+              exit 1
+            fi
+          done
+
+          # 仓库内固定密钥库的指纹（keytool 的冒号格式，去掉冒号后比对）
+          EXPECTED_COMMITTED="CC4A58237C47B27C872CEB947FC8E8F7211D5545688BBCA9651473A61A71C8DD"
+
+          echo "debug   SHA-256: $DEBUG_SHA"
+          echo "release SHA-256: $RELEASE_SHA"
+
+          if [ "$DEBUG_SHA" != "$RELEASE_SHA" ]; then
+            echo "::error::debug 与 release 签名不一致：$DEBUG_SHA vs $RELEASE_SHA"
+            exit 1
+          fi
+
+          if [ "$DEBUG_SHA" = "$EXPECTED_COMMITTED" ]; then
+            SOURCE="仓库内固定密钥库（指纹与预期一致）"
+          else
+            SOURCE="Secret 注入的密钥库"
+          fi
+
           {
             echo "## APK 签名指纹"
+            echo ""
+            echo "**两个变体签名一致，来源：$SOURCE**"
             echo ""
             echo "| 变体 | 文件 | SHA-256 |"
             echo "| --- | --- | --- |"
             echo "| debug | \`$DEBUG_APK\` | \`$DEBUG_SHA\` |"
             echo "| release | \`$RELEASE_APK\` | \`$RELEASE_SHA\` |"
-            echo ""
-            echo "预期指纹（仓库内固定密钥库）："
-            echo "\`CC:4A:58:23:7C:47:B2:7C:87:2C:EB:94:7F:C8:E8:F7:21:1D:55:45:68:8B:BC:A9:65:14:73:A6:1A:71:C8:DD\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
-          echo "debug   SHA-256: $DEBUG_SHA"
-          echo "release SHA-256: $RELEASE_SHA"
-
-          if [ -z "$DEBUG_SHA" ] || [ -z "$RELEASE_SHA" ]; then
-            echo "::error::未能提取签名指纹"
-            exit 1
-          fi
-          if [ "$DEBUG_SHA" != "$RELEASE_SHA" ]; then
-            echo "::error::debug 与 release 签名不一致"
-            exit 1
-          fi
-          echo "签名一致"
+          echo "签名一致（$SOURCE）"
 
       - name: 上传 debug APK
         uses: actions/upload-artifact@v4
