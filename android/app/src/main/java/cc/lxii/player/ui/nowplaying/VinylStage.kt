@@ -25,8 +25,15 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import cc.lxii.player.ui.component.CoverArt
+
+/** 唱盘与唱臂的测试标记，供几何断言读取布局坐标。 */
+object VinylStageTags {
+    const val DISC = "vinyl-disc"
+    const val TONEARM = "vinyl-tonearm"
+}
 
 /**
  * 黑胶唱盘。
@@ -65,6 +72,7 @@ fun VinylStage(
 
         Box(
             modifier = Modifier
+                .testTag(VinylStageTags.DISC)
                 .size(side * 0.86f)
                 .clip(CircleShape),
             contentAlignment = Alignment.Center,
@@ -104,6 +112,7 @@ fun VinylStage(
         // 唱臂锚在右上角，绕自身左端旋转。
         Box(
             modifier = Modifier
+                .testTag(VinylStageTags.TONEARM)
                 .align(Alignment.TopEnd)
                 .padding(top = side * 0.04f, end = side * 0.06f)
                 .size(width = side * 0.42f, height = side * 0.42f),

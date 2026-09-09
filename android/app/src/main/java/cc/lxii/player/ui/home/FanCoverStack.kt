@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import cc.lxii.player.data.model.Track
@@ -36,6 +37,19 @@ private val frontLayer = FanLayer(128.dp, 176.dp, 36.dp, 0.dp, 1f, -4f)
 /** 堆叠区域尺寸。 */
 val FanStackWidth = 160.dp
 val FanStackHeight = 192.dp
+
+/**
+ * 三层的测试标记。
+ *
+ * 三层封面用的是同一批图、颜色相近，靠像素边界无法分辨谁在哪里，
+ * 所以让测试直接按标记读取各层的布局坐标与尺寸。
+ */
+object FanCoverStackTags {
+    const val BACK = "fan-cover-back"
+    const val MID = "fan-cover-mid"
+    const val FRONT = "fan-cover-front"
+    val all = listOf(BACK, MID, FRONT)
+}
 
 private val coverRadius = 24.dp
 
@@ -64,19 +78,20 @@ fun FanCoverStack(
             .height(FanStackHeight),
         contentAlignment = Alignment.TopEnd,
     ) {
-        Layer(backLayer, coverAt(2), withShadow = false)
-        Layer(midLayer, coverAt(1), withShadow = false)
-        Layer(frontLayer, coverAt(0), withShadow = true)
+        Layer(backLayer, coverAt(2), withShadow = false, tag = FanCoverStackTags.BACK)
+        Layer(midLayer, coverAt(1), withShadow = false, tag = FanCoverStackTags.MID)
+        Layer(frontLayer, coverAt(0), withShadow = true, tag = FanCoverStackTags.FRONT)
     }
 }
 
 @Composable
-private fun Layer(layer: FanLayer, uri: String?, withShadow: Boolean) {
+private fun Layer(layer: FanLayer, uri: String?, withShadow: Boolean, tag: String) {
     // 顺序要紧：offset 必须在 size 之后。
     // 写成 offset → size 时位移作用在尺寸未定的元素上，
     // 会被父容器的 TopEnd 对齐重新吸附回同一个角，
     // 三层于是完全重合、扇形效果消失（几何断言就是这样抓到的）。
     var modifier: Modifier = Modifier
+        .testTag(tag)
         .size(width = layer.width, height = layer.height)
         .offset(x = -layer.offsetRight, y = layer.offsetTop)
         .rotate(layer.rotation)

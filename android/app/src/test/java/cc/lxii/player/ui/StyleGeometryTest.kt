@@ -143,45 +143,42 @@ class StyleGeometryTest {
     }
 
     /**
-     * 扇形封面三层是错开的，不是叠在一起。
+     * 扇形封面三层各自落在不同位置、不同尺寸。
      *
-     * 按设计，后层在 right=1、中层 right=18、前层 right=36，
-     * 每层尺寸也不同。若三层完全重合，右侧边缘只会出现一条竖直分界；
-     * 错开时右半区会出现多个层次的边界，颜色数明显更多。
+     * 用布局坐标验证，而不是猜像素边界：三层封面颜色相近（同一批占位图），
+     * 靠「最左非背景像素」判断谁在哪里是不可靠的——第一版这么写，
+     * 结果无论代码怎么改都报同一个数字，测的其实是最外层的包围盒。
+     *
+     * 每层带 testTag，直接读它们的实际位置与尺寸，
+     * 位置重合或尺寸相同都会失败。
      */
     @Test
-    fun fanCoverLayersAreOffsetFromEachOther() {
+    fun fanCoverLayersOccupyDistinctPositionsAndSizes() {
         val tracks = (1..4).map { track(it.toString()) }
-        val frame = render {
-            Box(modifier = Modifier.fillMaxSize()) {
-                FanCoverStack(tracks = tracks, featuredIndex = 0)
+        compose.setContent {
+            LxPlayerTheme(darkTheme = true) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    Box { FanCoverStack(tracks = tracks, featuredIndex = 0) }
+                }
             }
         }
-        // 堆叠区 160x192dp = 480x576px
-        val ink = frame.inkRatio(0, 0, 480, 576)
-        assertTrue("扇形封面区几乎空白（ink=$ink）", ink > 0.25)
+        compose.waitForIdle()
 
-        // 三层错开会在纵向不同高度产生不同的左边界：
-        // 逐行找最左侧非背景像素，若三层重合则这个值几乎恒定。
-        val leftEdges = mutableListOf<Int>()
-        var y = 20
-        while (y < 560) {
-            var x = 0
-            var found = -1
-            while (x < 480) {
-                val p = frame.pixel(x, y)
-                val lum = AndroidColor.red(p) + AndroidColor.green(p) + AndroidColor.blue(p)
-                if (lum > 24) { found = x; break }
-                x += 2
-            }
-            if (found >= 0) leftEdges += found
-            y += 20
+        val bounds = FanCoverStackTags.all.map { tag ->
+            compose.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
         }
-        val distinctEdges = leftEdges.toSet().size
-        assertTrue(
-            "左边界只有 $distinctEdges 种取值，三层封面可能完全重合（应因错开与旋转产生多种）",
-            distinctEdges >= 3,
-        )
+
+        // 尺寸必须三种都不同：112x144 / 120x160 / 128x176
+        val widths = bounds.map { it.width.toInt() }.toSet()
+        assertTrue("三层宽度应各不相同，实测 $widths", widths.size == 3)
+
+        // 左边界必须三种都不同（层层向左露出）
+        val lefts = bounds.map { it.left.toInt() }.toSet()
+        assertTrue("三层左边界应各不相同，实测 $lefts", lefts.size == 3)
+
+        // 顶边也应错开：设计里 top 分别是 9 / 4 / 0
+        val tops = bounds.map { it.top.toInt() }.toSet()
+        assertTrue("三层顶边应错开，实测 $tops", tops.size >= 2)
     }
 
     /**
@@ -190,30 +187,47 @@ class StyleGeometryTest {
      * 圆形的判据：水平中线两端为背景（圆之外），中心为内容；
      * 且四个角必须是背景。方形封面无法同时满足这两条。
      */
+    /**
+     * 唱盘是正方形布局里的圆，唱臂另有位置。
+     *
+     * 不用「角落像素是否发亮」判断：那片区域可能落着唱臂、阴影或父容器背景，
+     * 拿它当依据会得到一个和代码改动无关的恒定值（第一版就一直报同一个亮度 69）。
+     * 改成读布局坐标：唱盘必须是等宽等高（圆的包围盒是正方形），
+     * 唱臂必须偏在右上、且不与唱盘同心。
+     */
     @Test
-    fun vinylStageRendersAsACircle() {
-        val frame = render {
-            Box(modifier = Modifier.size(300.dp)) {
-                VinylStage(coverUri = null, playing = true)
+    fun vinylDiscIsSquareBoundedAndTonearmSitsTopRight() {
+        compose.setContent {
+            LxPlayerTheme(darkTheme = true) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.size(300.dp)) {
+                        VinylStage(coverUri = null, playing = true)
+                    }
+                }
             }
         }
-        val side = 300 * 3
-        fun lum(x: Int, y: Int): Int {
-            val p = frame.pixel(x, y)
-            return AndroidColor.red(p) + AndroidColor.green(p) + AndroidColor.blue(p)
-        }
+        compose.waitForIdle()
 
-        val center = lum(side / 2, side / 2)
-        // 只查左侧与右下三角：右上角被唱臂占据，唱臂本来就该画在那里，
-        // 拿它判断「圆外无内容」会把正确实现判成缺陷。
-        val topLeft = lum(6, 6)
-        val bottomLeft = lum(6, side - 6)
-        val bottomRight = lum(side - 6, side - 6)
+        val disc = compose.onNodeWithTag(VinylStageTags.DISC)
+            .fetchSemanticsNode().boundsInRoot
+        val arm = compose.onNodeWithTag(VinylStageTags.TONEARM)
+            .fetchSemanticsNode().boundsInRoot
 
-        assertTrue("唱盘中心应有内容，实测亮度 $center", center > 24)
-        assertTrue("左上角应在圆外（亮度 $topLeft）", topLeft < 24)
-        assertTrue("左下角应在圆外（亮度 $bottomLeft）", bottomLeft < 24)
-        assertTrue("右下角应在圆外（亮度 $bottomRight）", bottomRight < 24)
+        // 圆的包围盒必须是正方形（容差 2px 给舍入）
+        val delta = kotlin.math.abs(disc.width - disc.height)
+        assertTrue("唱盘包围盒应为正方形，实测 ${disc.width}x${disc.height}", delta <= 2f)
+
+        // 唱臂中心必须在唱盘中心的右上方
+        val discCx = disc.center.x
+        val discCy = disc.center.y
+        assertTrue(
+            "唱臂应偏右（臂心 ${arm.center.x} vs 盘心 $discCx）",
+            arm.center.x > discCx,
+        )
+        assertTrue(
+            "唱臂应偏上（臂心 ${arm.center.y} vs 盘心 $discCy）",
+            arm.center.y < discCy,
+        )
     }
 
     /**
