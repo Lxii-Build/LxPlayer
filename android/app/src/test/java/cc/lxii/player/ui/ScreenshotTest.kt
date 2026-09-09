@@ -216,7 +216,11 @@ class ScreenshotTest {
             drawBitmap(captured, 0f, 0f, null)
         }
 
-        val dir = File("build/screenshots").apply { mkdirs() }
+        // 写到 build/ 之外：Gradle 的构建缓存会把 build/ 下的产物整体恢复，
+        // 于是测试被 FROM-CACHE 跳过时旧截图也一起「复活」，
+        // 上传的就是上一轮的图。放在 build/ 外面，缓存碰不到它。
+        val dir = File(System.getProperty("lxplayer.screenshotDir") ?: "screenshots")
+            .apply { mkdirs() }
         File(dir, "$name.png").outputStream().use { out ->
             flattened.compress(Bitmap.CompressFormat.PNG, 100, out)
         }

@@ -149,11 +149,20 @@ kotlin {
     }
 }
 
-// 截图写在 build/screenshots，Gradle 不知道它们是任务产物，
-// 缓存命中时测试整个跳过、图还是上一轮的旧文件——那会让「视觉已验证」
-// 变成看着旧图自我确认。声明成输出目录后，图缺失就会触发重跑。
+// 渲染截图是「界面真的画出来了」的唯一证据，必须保证它来自本次运行。
+//
+// 曾经把图写在 build/screenshots 并声明成任务输出，结果仍然拿到旧图：
+// Gradle 构建缓存命中时会连同 build/ 下的产物一起恢复，测试整个 FROM-CACHE
+// 跳过，图却「复活」了——CI 于是拿上一轮的图报告「本轮已验证」。
+//
+// 所以：截图目录放在 build/ 之外，并且关掉这个任务的缓存与增量跳过。
+// 每次 CI 都真跑一遍渲染，多花的时间换来的是证据可信。
+val screenshotDir = layout.projectDirectory.dir("screenshots")
+
 tasks.withType<Test>().configureEach {
-    outputs.dir(layout.buildDirectory.dir("screenshots"))
+    systemProperty("lxplayer.screenshotDir", screenshotDir.asFile.absolutePath)
+    outputs.upToDateWhen { false }
+    outputs.cacheIf { false }
 }
 
 dependencies {

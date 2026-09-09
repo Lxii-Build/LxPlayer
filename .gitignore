@@ -9,6 +9,7 @@ captures/
 *.apk
 *.aab
 .superpowers/
+android/app/screenshots/
 
 # Go
 server/lxplayer-server
