@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.util.UnstableApi
+import cc.lxii.player.core.lyrics.LyricLine
+import cc.lxii.player.core.lyrics.LyricsRepository
 import cc.lxii.player.core.player.PlayerController
 import cc.lxii.player.core.source.LocalMusicSource
 import cc.lxii.player.data.model.Track
@@ -33,6 +35,7 @@ class LibraryViewModel(
     private val source: LocalMusicSource,
     private val player: PlayerController,
     private val settings: SettingsStore,
+    private val lyricsRepository: LyricsRepository,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(LibraryUiState())
@@ -43,6 +46,26 @@ class LibraryViewModel(
 
     val likedIds: StateFlow<Set<String>> = settings.likedTracks
         .stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
+
+    private val _lyrics = MutableStateFlow<List<LyricLine>>(emptyList())
+    val lyrics: StateFlow<List<LyricLine>> = _lyrics.asStateFlow()
+
+    /**
+     * 跟随当前曲目加载歌词。
+     *
+     * 换歌先清空再加载：留着上一首的歌词滚动，比没有歌词更让人困惑。
+     */
+    fun loadLyricsFor(track: Track?) {
+        _lyrics.value = emptyList()
+        if (track == null) return
+        viewModelScope.launch {
+            val loaded = runCatching { lyricsRepository.load(track) }.getOrDefault(emptyList())
+            // 加载期间可能又换了歌，确认还是同一首才应用。
+            if (player.currentTrack.value?.globalId == track.globalId) {
+                _lyrics.value = loaded
+            }
+        }
+    }
 
     fun toggleLike(track: Track) {
         viewModelScope.launch { settings.toggleLiked(track.globalId) }
@@ -118,9 +141,10 @@ class LibraryViewModel(
         private val source: LocalMusicSource,
         private val player: PlayerController,
         private val settings: SettingsStore,
+        private val lyricsRepository: LyricsRepository,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            LibraryViewModel(source, player, settings) as T
+            LibraryViewModel(source, player, settings, lyricsRepository) as T
     }
 }

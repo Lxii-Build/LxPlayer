@@ -118,6 +118,8 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric 需要真实资源才能渲染 Compose 界面并截图。
+        unitTests.isIncludeAndroidResources = true
     }
 
     compileOptions {
@@ -181,4 +183,13 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    // 界面渲染验证：在 JVM 上真正 compose 出界面并导出 PNG，
+    // 让「风格是否做出来了」有可看的证据，而不只是编译通过。
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 }

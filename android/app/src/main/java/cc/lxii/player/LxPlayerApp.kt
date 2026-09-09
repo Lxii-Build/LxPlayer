@@ -2,6 +2,7 @@ package cc.lxii.player
 
 import android.app.Application
 import androidx.media3.common.util.UnstableApi
+import cc.lxii.player.core.lyrics.LyricsRepository
 import cc.lxii.player.core.player.PlayerController
 import cc.lxii.player.core.source.LocalMusicSource
 import cc.lxii.player.data.prefs.SettingsStore
@@ -15,6 +16,7 @@ import cc.lxii.player.data.prefs.SettingsStore
 class AppContainer(application: Application) {
     val localSource: LocalMusicSource = LocalMusicSource(application)
     val settings: SettingsStore = SettingsStore(application)
+    val lyricsRepository: LyricsRepository = LyricsRepository(application)
     val playerController: PlayerController = PlayerController.get(application, localSource)
 }
 

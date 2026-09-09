@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Pause
@@ -52,6 +54,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import cc.lxii.player.core.player.policy.RepeatMode
+import cc.lxii.player.core.lyrics.LyricLine
 import cc.lxii.player.data.model.Track
 import cc.lxii.player.ui.component.CoverArt
 import cc.lxii.player.ui.component.formatDuration
@@ -74,6 +77,7 @@ fun NowPlayingScreen(
     repeatMode: RepeatMode,
     shuffleEnabled: Boolean,
     liked: Boolean,
+    lyrics: List<LyricLine>,
     onTogglePlay: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -91,6 +95,8 @@ fun NowPlayingScreen(
     var scrubValue by remember { mutableFloatStateOf(0f) }
     // 方形封面与黑胶唱盘之间切换，点封面即切。
     var vinylMode by remember { mutableStateOf(false) }
+    // 左右滑动在封面页与歌词页之间切换。
+    val stagePagerState = rememberPagerState(pageCount = { 2 })
 
     // 背景色来自当前封面，换歌时 800ms 交叉淡入。
     val accent by rememberCoverAccent(track.coverUri)
@@ -156,32 +162,48 @@ fun NowPlayingScreen(
                 }
             }
 
-            Spacer(Modifier.weight(0.6f))
+            Spacer(Modifier.weight(0.35f))
 
-            Box(
+            HorizontalPager(
+                state = stagePagerState,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { vinylMode = !vinylMode },
-                    ),
-            ) {
-                if (vinylMode) {
-                    VinylStage(coverUri = track.coverUri, playing = playing)
-                } else {
-                    CoverArt(
-                        uri = track.coverUri,
+                    .weight(1f),
+            ) { page ->
+                if (page == 0) {
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .shadow(
-                                elevation = 28.dp,
-                                shape = RoundedCornerShape(LxRadius.stageCover),
-                                ambientColor = Color.Black,
-                                spotColor = Color.Black,
+                            .fillMaxSize()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { vinylMode = !vinylMode },
                             ),
-                        radius = LxRadius.stageCover,
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (vinylMode) {
+                            VinylStage(coverUri = track.coverUri, playing = playing)
+                        } else {
+                            CoverArt(
+                                uri = track.coverUri,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .aspectRatio(1f)
+                                    .shadow(
+                                        elevation = 28.dp,
+                                        shape = RoundedCornerShape(LxRadius.stageCover),
+                                        ambientColor = Color.Black,
+                                        spotColor = Color.Black,
+                                    ),
+                                radius = LxRadius.stageCover,
+                            )
+                        }
+                    }
+                } else {
+                    LyricsPane(
+                        lines = lyrics,
+                        positionMs = positionMs,
+                        onSeekTo = onSeek,
                     )
                 }
             }

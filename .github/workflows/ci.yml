@@ -178,6 +178,20 @@ jobs:
           ERRORS=$(count_attr errors)
           SKIPPED=$(count_attr skipped)
           echo "单元测试：$TESTS 个，失败 $FAILURES，错误 $ERRORS，跳过 $SKIPPED"
+
+          # 截图数量单独确认：渲染测试若被静默跳过，产物会是空的，
+          # 那时「风格已验证」就成了空话。
+          SHOTS=$(ls app/build/screenshots/*.png 2>/dev/null | wc -l | tr -d ' ')
+          echo "界面截图：$SHOTS 张"
+          {
+            echo "## 界面渲染"
+            echo ""
+            echo "导出截图 **$SHOTS** 张（见 Artifacts 里的 lxplayer-screenshots）"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$SHOTS" -lt 4 ]; then
+            echo "::error::渲染截图不足（$SHOTS 张），界面未被真正渲染验证"
+            exit 1
+          fi
           {
             echo "## 单元测试"
             echo ""
@@ -295,6 +309,16 @@ jobs:
         with:
           name: lxplayer-release-${{ env.IN_VERSION_NAME }}-${{ github.sha }}
           path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+      # 界面截图是「风格做出来了」的唯一可视证据：
+      # 编译通过和单测全绿都无法说明界面长什么样。
+      - name: 上传界面渲染截图
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lxplayer-screenshots-${{ github.sha }}
+          path: android/app/build/screenshots/*.png
           if-no-files-found: error
 
       - name: 上传 R8 mapping

@@ -91,11 +91,13 @@ class MainActivity : ComponentActivity() {
                             container.localSource,
                             player,
                             container.settings,
+                            container.lyricsRepository,
                         ),
                     )
                     val libraryState by libraryVm.state.collectAsState()
                     val featuredIndex by libraryVm.featuredIndex.collectAsState()
                     val likedIds by libraryVm.likedIds.collectAsState()
+                    val lyrics by libraryVm.lyrics.collectAsState()
                     val currentTrack by player.currentTrack.collectAsState()
                     val isPlaying by player.isPlaying.collectAsState()
                     val positionMs by player.positionMs.collectAsState()
@@ -119,6 +121,11 @@ class MainActivity : ComponentActivity() {
 
                     LaunchedEffect(Unit) {
                         libraryVm.onPermissionResult(hasAudioPermission())
+                    }
+
+                    // 换歌就重新找歌词。
+                    LaunchedEffect(currentTrack?.globalId) {
+                        libraryVm.loadLyricsFor(currentTrack)
                     }
 
                     BackHandler(enabled = nowPlayingOpen || loginOpen) {
@@ -255,6 +262,7 @@ class MainActivity : ComponentActivity() {
                                 repeatMode = repeatMode,
                                 shuffleEnabled = shuffle,
                                 liked = currentTrack?.globalId in likedIds,
+                                lyrics = lyrics,
                                 onTogglePlay = player::playPause,
                                 onNext = player::next,
                                 onPrevious = player::previous,
