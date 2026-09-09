@@ -1,0 +1,16 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+.superpowers/
+
+# Go
+server/lxplayer-server
+server/*.db
+server/data/
