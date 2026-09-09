@@ -1,7 +1,6 @@
 // 顶层构建文件：只声明插件版本，具体配置在 :app。
 plugins {
     alias(libs.plugins.agp.app) apply false
-    alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.kotlin.serialization) apply false
 }
