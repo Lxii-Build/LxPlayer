@@ -1,8 +1,9 @@
 package cc.lxii.player.ui.home
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -72,32 +73,46 @@ fun FanCoverStack(
         return tracks.getOrNull(index)?.coverUri ?: tracks.getOrNull(featuredIndex)?.coverUri
     }
 
+    // 不用 contentAlignment：让每层自己用 align(TopEnd) 定位，
+    // 再叠 offset。父容器统一对齐会在测量阶段把子元素重新吸附，
+    // 纵向位移被吃掉（顶边全为 0）。
     Box(
         modifier = modifier
             .width(FanStackWidth)
             .height(FanStackHeight),
-        contentAlignment = Alignment.TopEnd,
     ) {
-        Layer(backLayer, coverAt(2), withShadow = false, tag = FanCoverStackTags.BACK)
-        Layer(midLayer, coverAt(1), withShadow = false, tag = FanCoverStackTags.MID)
-        Layer(frontLayer, coverAt(0), withShadow = true, tag = FanCoverStackTags.FRONT)
+        Layer(this, backLayer, coverAt(2), withShadow = false, tag = FanCoverStackTags.BACK)
+        Layer(this, midLayer, coverAt(1), withShadow = false, tag = FanCoverStackTags.MID)
+        Layer(this, frontLayer, coverAt(0), withShadow = true, tag = FanCoverStackTags.FRONT)
     }
 }
 
 @Composable
-private fun Layer(layer: FanLayer, uri: String?, withShadow: Boolean, tag: String) {
-    // offset 必须在 size 之后：写成 offset → size 时位移作用在尺寸未定的元素上，
-    // 会被父容器的 TopEnd 对齐吸附回同一个角，三层完全重合。
+private fun Layer(
+    scope: BoxScope,
+    layer: FanLayer,
+    uri: String?,
+    withShadow: Boolean,
+    tag: String,
+) {
+    // 每层自己对齐到右上，再用 absoluteOffset 位移。
     //
-    // testTag 放在链末（最内层）：modifier 链里靠前的是外层，
-    // 把 tag 放在 offset 之前会读到「父容器分配的位置」而非位移后的位置，
-    // 断言就测不到 offset 到底有没有生效。
-    var modifier: Modifier = Modifier
-        .size(width = layer.width, height = layer.height)
-        .offset(x = -layer.offsetRight, y = layer.offsetTop)
-        .rotate(layer.rotation)
-        .alpha(layer.alpha)
-        .testTag(tag)
+    // 用 Modifier.offset 曾让三层顶边全是 0：offset 不改变布局约束，
+    // 父容器 contentAlignment 会在测量后把子元素重新吸附回对齐点。
+    // absoluteOffset 直接偏移放置坐标，不受对齐影响，也不随 RTL 翻转
+    // （这里的偏移是视觉构图，不该跟随阅读方向）。
+    //
+    // testTag 放在链末：modifier 链靠前的是外层，
+    // 放在 offset 之前会读到位移前的位置，断言就验不到 offset。
+    var modifier: Modifier = with(scope) {
+        Modifier
+            .align(Alignment.TopEnd)
+            .size(width = layer.width, height = layer.height)
+            .absoluteOffset(x = -layer.offsetRight, y = layer.offsetTop)
+            .rotate(layer.rotation)
+            .alpha(layer.alpha)
+            .testTag(tag)
+    }
 
     if (withShadow) {
         modifier = modifier.shadow(
