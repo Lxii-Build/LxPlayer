@@ -43,8 +43,10 @@ subprojects {
             targetCompatibility = JavaVersion.VERSION_17
         }
     }
+    // 必须用 compilerOptions：Kotlin 2.2.20 起访问 kotlinOptions 不再是警告，
+    // 而是直接判为编译错误（kotl.in/u1r8ln）。
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-        kotlinOptions.jvmTarget = JavaVersion.VERSION_17.toString()
+        compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
