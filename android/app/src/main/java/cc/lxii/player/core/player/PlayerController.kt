@@ -354,5 +354,20 @@ class PlayerController private constructor(
             }
 
         fun peek(): PlayerController? = instance
+
+        /**
+         * 丢弃单例，仅供测试。
+         *
+         * 播放状态是进程级的，单例是对的；但测试之间必须互相隔离——
+         * 否则上一个用例留下的队列、循环模式、随机开关会渗进下一个，
+         * 结果随执行顺序变化。
+         */
+        @androidx.annotation.VisibleForTesting
+        fun resetForTesting() {
+            synchronized(this) {
+                instance?.detach()
+                instance = null
+            }
+        }
     }
 }
