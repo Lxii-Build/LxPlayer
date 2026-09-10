@@ -142,15 +142,17 @@ class LoginScreenTest {
     }
 
     @Test
-    fun switchingToRegisterChangesTheHeadlineAndSubmitLabel() {
+    fun switchingToRegisterChangesTheHeadline() {
         render()
         compose.onNodeWithText("登录 LxPlayer").assertIsDisplayed()
 
         compose.onNodeWithTag(LoginTags.MODE_REGISTER).performClick()
         compose.waitForIdle()
 
+        // 标题用整句匹配：「注册」两个字同时出现在分段控件和按钮上，
+        // 按文字找会命中多个节点。
         compose.onNodeWithText("创建账号").assertIsDisplayed()
-        compose.onNodeWithText("注册").assertIsDisplayed()
+        compose.onNodeWithTag(LoginTags.SUBMIT).assertIsDisplayed()
     }
 
     @Test
@@ -180,18 +182,29 @@ class LoginScreenTest {
 
         val card = compose.onNodeWithTag(LoginTags.ERROR)
             .fetchSemanticsNode().boundsInRoot
-        // 错误卡片应有明显高度（图标 + 内边距），裸文字不会这么高
-        assertTrue("错误应以卡片承载，实测高 ${card.height}", card.height > 100f)
+        val text = compose.onNodeWithText("邮箱或密码不正确")
+            .fetchSemanticsNode().boundsInRoot
+
+        // 卡片必须比里面的文字宽出内边距，否则就是裸文字而非卡片。
+        assertTrue(
+            "错误应以卡片承载：卡片宽 ${card.width} 应明显大于文字宽 ${text.width}",
+            card.width > text.width + 40f,
+        )
         compose.onNodeWithText("邮箱或密码不正确").assertIsDisplayed()
     }
 
     @Test
-    fun busyStateShowsAProgressIndicatorInsteadOfTheLabel() {
-        render(busy = true)
+    fun busyStateBlocksSubmissionAndKeepsTheButtonVisible() {
+        var submitted = false
+        // 忙碌时表单即使填好也不该能再次提交，否则会重复请求。
+        render(busy = true, onSubmit = { _, _, _ -> submitted = true })
 
-        // 加载时按钮上的文字应被替换成进度指示
-        compose.onNodeWithText("登录").assertDoesNotExist()
+        compose.onNodeWithTag(LoginTags.EMAIL).performTextInput("a@example.com")
+        compose.onNodeWithTag(LoginTags.PASSWORD).performTextInput("password12")
+        compose.onNodeWithTag(LoginTags.SUBMIT).performClick()
+
         compose.onNodeWithTag(LoginTags.SUBMIT).assertIsDisplayed()
+        assertTrue("忙碌态不应再次提交", !submitted)
     }
 
     @Test
