@@ -36,11 +36,22 @@ subprojects {
 //   being built with JVM target 1.8
 // 所以这里统一把 Java 与 Kotlin 的目标版本都顶到 17，和 CI 上的 JDK 17 对齐。
 // 两者必须一起改：只改 Kotlin 会触发「Inconsistent JVM-target compatibility」。
+// 这里刻意不用 afterEvaluate：上面的 evaluationDependsOn(":app") 会提前把 :app
+// 求值掉，再对它调 afterEvaluate 会直接抛
+//   Cannot run Project.afterEvaluate(Action) when the project is already evaluated
+// plugins.withId 没有这个问题——插件已应用就立刻回调，后应用则等应用时回调，
+// 两种时机都能拿到 android 扩展。
 subprojects {
-    afterEvaluate {
-        (extensions.findByName("android") as? com.android.build.gradle.BaseExtension)?.compileOptions {
-            sourceCompatibility = JavaVersion.VERSION_17
-            targetCompatibility = JavaVersion.VERSION_17
+    // :app 自己已经配好了配套的 11/11，把它排除掉。若只把它的 Kotlin 顶到 17
+    // 而 Java 仍是 11，反而会触发「Inconsistent JVM-target compatibility」。
+    if (name == "app") return@subprojects
+
+    listOf("com.android.library", "com.android.application").forEach { pluginId ->
+        plugins.withId(pluginId) {
+            (extensions.findByName("android") as? com.android.build.gradle.BaseExtension)?.compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
         }
     }
     // 必须用 compilerOptions：Kotlin 2.2.20 起访问 kotlinOptions 不再是警告，
