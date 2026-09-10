@@ -65,6 +65,7 @@ fun LoginModeSwitch(
     register: Boolean,
     onChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
@@ -81,6 +82,7 @@ fun LoginModeSwitch(
             selected = !register,
             onClick = { onChange(false) },
             tag = LoginTags.MODE_LOGIN,
+            enabled = enabled,
             modifier = Modifier.weight(1f),
         )
         SegmentTab(
@@ -88,6 +90,7 @@ fun LoginModeSwitch(
             selected = register,
             onClick = { onChange(true) },
             tag = LoginTags.MODE_REGISTER,
+            enabled = enabled,
             modifier = Modifier.weight(1f),
         )
     }
@@ -100,6 +103,7 @@ private fun SegmentTab(
     onClick: () -> Unit,
     tag: String,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val background by animateColorAsState(
@@ -117,7 +121,7 @@ private fun SegmentTab(
             .fillMaxWidth()
             .clip(RoundedCornerShape(percent = 50))
             .background(background)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .testTag(tag),
         contentAlignment = Alignment.Center,
     ) {
@@ -148,6 +152,7 @@ fun LoginField(
     modifier: Modifier = Modifier,
     masked: Boolean = false,
     supporting: String? = null,
+    enabled: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
@@ -171,6 +176,7 @@ fun LoginField(
                 .testTag(tag),
             label = { Text(label) },
             singleLine = true,
+            enabled = enabled,
             interactionSource = interaction,
             visualTransformation = if (masked) PasswordVisualTransformation()
             else androidx.compose.ui.text.input.VisualTransformation.None,

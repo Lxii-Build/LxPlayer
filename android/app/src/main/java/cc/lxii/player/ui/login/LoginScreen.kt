@@ -122,7 +122,11 @@ fun LoginScreen(
 
             Spacer(Modifier.height(28.dp))
 
-            LoginModeSwitch(register = register, onChange = { register = it })
+            LoginModeSwitch(
+                register = register,
+                onChange = { register = it },
+                enabled = !busy,
+            )
 
             Spacer(Modifier.height(24.dp))
 
@@ -133,6 +137,9 @@ fun LoginScreen(
                 icon = Icons.Outlined.MailOutline,
                 keyboardType = KeyboardType.Email,
                 tag = LoginTags.EMAIL,
+                // 请求进行中锁住输入：此时改邮箱不影响已发出的请求，
+                // 却会让人以为改了就生效。
+                enabled = !busy,
             )
 
             Spacer(Modifier.height(16.dp))
@@ -146,6 +153,7 @@ fun LoginScreen(
                 masked = true,
                 supporting = if (register) "至少 $MIN_PASSWORD_LENGTH 位" else null,
                 tag = LoginTags.PASSWORD,
+                enabled = !busy,
             )
 
             // 错误用淡红底卡片承载，而不是一行裸红字——
