@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash Screen 背景色 - 深色模式 -->
+    <color name="splash_background">#1A1A1A</color>
+    <!-- Splash Screen 图标背景色 -->
+    <color name="splash_icon_background">#9C27B0</color>
+</resources>
