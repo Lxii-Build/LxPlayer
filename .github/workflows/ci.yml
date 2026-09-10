@@ -61,8 +61,10 @@ jobs:
           channel: stable
           cache: true
 
+      # 首轮 pub get 报「Package not available (authorization failed)」但没说是哪个包。
+      # --verbose 会打印每个包的下载地址，失败的那个一眼可见。
       - name: 拉取依赖
-        run: flutter pub get
+        run: flutter pub get --verbose 2>&1 | tail -80
 
       # 正式签名密钥库从 Secret 解码落盘；未配置时 build.gradle.kts 回退到
       # 随仓库提交的固定 PKCS12。两条路径都保证 debug 与 release 同证书。
