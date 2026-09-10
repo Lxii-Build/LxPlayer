@@ -111,22 +111,26 @@ class LibraryViewModelTest {
         val recommended = listOf(track("a"), track("b"), track("c"))
         viewModel.setTracksForTesting(recommended)
         controller.playQueue(recommended, 2)
-        viewModel.onFeaturedIndexChange(2)
+        // featuredIndex 初始为 0；先对齐到 2 再后退，
+        // 否则 0 → 1 会被当成前进，测的就不是后退了。
+        viewModel.onFeaturedIndexChange(1) // 0→1 前进：队列 2 → 0（循环）
+        viewModel.onFeaturedIndexChange(2) // 1→2 前进：队列 0 → 1
 
-        // 2 → 1 是后退一格
-        viewModel.onFeaturedIndexChange(1)
+        viewModel.onFeaturedIndexChange(1) // 2→1 后退：队列 1 → 0
 
-        assertEquals("b", controller.currentTrack.value?.id)
+        assertEquals("a", controller.currentTrack.value?.id)
     }
 
     @Test
     fun wrappingForwardFromTheLastCardCountsAsForward() {
         val recommended = listOf(track("a"), track("b"), track("c"))
         viewModel.setTracksForTesting(recommended)
-        controller.playQueue(recommended, 2)
-        viewModel.onFeaturedIndexChange(2)
+        controller.playQueue(recommended, 0)
+        // 把 featuredIndex 推到末页（每一步都是前进，队列同步前进）
+        viewModel.onFeaturedIndexChange(1) // 队列 0 → 1
+        viewModel.onFeaturedIndexChange(2) // 队列 1 → 2
 
-        // 2 → 0 是循环前进，不是后退
+        // 2 → 0 是循环前进，不是后退：队列应继续前进并回绕到 0
         viewModel.onFeaturedIndexChange(0)
 
         assertEquals("a", controller.currentTrack.value?.id)
