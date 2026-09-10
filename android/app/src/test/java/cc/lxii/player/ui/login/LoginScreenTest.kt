@@ -9,6 +9,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -194,15 +195,21 @@ class LoginScreenTest {
     }
 
     @Test
-    fun busyStateBlocksSubmissionAndKeepsTheButtonVisible() {
+    fun busyStateLocksEveryInteractiveControl() {
         var submitted = false
-        // 忙碌时表单即使填好也不该能再次提交，否则会重复请求。
         render(busy = true, onSubmit = { _, _, _ -> submitted = true })
 
-        compose.onNodeWithTag(LoginTags.EMAIL).performTextInput("a@example.com")
-        compose.onNodeWithTag(LoginTags.PASSWORD).performTextInput("password12")
-        compose.onNodeWithTag(LoginTags.SUBMIT).performClick()
+        // 请求进行中，输入框应被禁用——此时改邮箱不影响已发出的请求。
+        compose.onNodeWithTag(LoginTags.EMAIL).assertIsNotEnabled()
+        compose.onNodeWithTag(LoginTags.PASSWORD).assertIsNotEnabled()
 
+        // 模式切换也要锁住，否则界面看起来切了但请求还是原来那个。
+        compose.onNodeWithTag(LoginTags.MODE_REGISTER).performClick()
+        compose.waitForIdle()
+        compose.onNodeWithText("登录 LxPlayer").assertIsDisplayed()
+
+        // 按钮仍在原位（不是消失），但点不动。
+        compose.onNodeWithTag(LoginTags.SUBMIT).performClick()
         compose.onNodeWithTag(LoginTags.SUBMIT).assertIsDisplayed()
         assertTrue("忙碌态不应再次提交", !submitted)
     }
