@@ -200,6 +200,7 @@ jobs:
             cc.lxii.player.ui.StyleGeometryTest \
             cc.lxii.player.ui.ComponentGeometryTest \
             cc.lxii.player.ui.ShadowAndGlassTest \
+            cc.lxii.player.ui.login.LoginScreenTest \
             cc.lxii.player.ui.theme.TypographyTest \
             cc.lxii.player.ui.theme.ShapeTest \
             cc.lxii.player.ui.home.FanCoverSpecTest; do
@@ -218,7 +219,7 @@ jobs:
             echo ""
             echo "导出截图 **$SHOTS** 张（见 Artifacts 里的 lxplayer-screenshots）"
           } >> "$GITHUB_STEP_SUMMARY"
-          if [ "$SHOTS" -lt 4 ]; then
+          if [ "$SHOTS" -lt 5 ]; then
             echo "::error::渲染截图不足（$SHOTS 张），界面未被真正渲染验证"
             exit 1
           fi

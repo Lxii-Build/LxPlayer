@@ -20,6 +20,7 @@ import cc.lxii.player.ui.component.GlassBottomNav
 import cc.lxii.player.ui.component.LxTab
 import cc.lxii.player.ui.component.MiniPlayer
 import cc.lxii.player.ui.home.HomeScreen
+import cc.lxii.player.ui.login.LoginScreen
 import cc.lxii.player.ui.nowplaying.NowPlayingScreen
 import cc.lxii.player.ui.theme.LxPlayerTheme
 import org.junit.Assert.assertTrue
@@ -188,6 +189,25 @@ class ScreenshotTest {
             }
         }
         capture("chrome")
+    }
+
+    /** 登录页也要出图：它刚被重做过，是最需要看到效果的界面。 */
+    @Test
+    fun loginScreenRenders() {
+        compose.setContent {
+            LxPlayerTheme(darkTheme = true) {
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    LoginScreen(
+                        busy = false,
+                        error = null,
+                        onSubmit = { _, _, _ -> },
+                        onBack = {},
+                        animateBrand = false,
+                    )
+                }
+            }
+        }
+        capture("login")
     }
 
     /**
