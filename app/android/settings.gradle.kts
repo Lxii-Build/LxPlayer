@@ -9,13 +9,8 @@ pluginManagement {
 
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
+    // 同 build.gradle.kts：境外 runner 上阿里云镜像只带来 502 风险，去掉。
     repositories {
-        // 阿里云镜像（加速国内下载）
-        maven { url = uri("https://maven.aliyun.com/repository/google") }
-        maven { url = uri("https://maven.aliyun.com/repository/public") }
-        maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }
-        maven { url = uri("https://maven.aliyun.com/repository/central") }
-        
         google()
         mavenCentral()
         gradlePluginPortal()

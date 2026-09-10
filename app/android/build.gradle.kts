@@ -6,12 +6,10 @@ plugins {
 }
 
 allprojects {
+    // 这里刻意不配阿里云镜像：CI 跑在 GitHub 的境外 runner 上，镜像没有加速效果，
+    // 而一旦它返回 502，Gradle 会把该仓库整个禁用，连锁出几十个
+    // "Could not resolve" 导致构建失败（run 54 就是这么挂的）。
     repositories {
-        // 阿里云镜像（加速国内下载）
-        maven { url = uri("https://maven.aliyun.com/repository/google") }
-        maven { url = uri("https://maven.aliyun.com/repository/public") }
-        maven { url = uri("https://maven.aliyun.com/repository/central") }
-        
         google()
         mavenCentral()
     }
