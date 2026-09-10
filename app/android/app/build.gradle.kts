@@ -17,9 +17,7 @@ plugins {
 
 android {
     namespace = "cc.lxii.player"
-    // 不用 flutter.compileSdkVersion（36）：glance-appwidget 1.3.0-alpha02 的
-    // AAR 元数据要求编译 SDK ≥ 37，而 37 是 AGP 9.1.1 才支持的最低版本。
-    compileSdk = 37
+    compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

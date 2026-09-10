@@ -62,6 +62,20 @@ subprojects {
     }
 }
 
+// home_widget 传递引入的 androidx.glance:glance-appwidget 被解析到了
+// 1.3.0-alpha02，它的 AAR 元数据要求 compile SDK ≥ 37，而 AGP 8.11.x 最高只支持
+// 36（AGP 9 才能上 37，但 AGP 9 会撞上 flutter_inappwebview 的 proguard-android.txt）。
+// 锁回 1.3.0 之前最后一个稳定版，让小部件依赖留在 36 能编译的范围里。
+// 全局强制而:app 单独强制，是为了让 home_widget 自己也按 1.2.0 编译——
+// 万一它用了 1.3 才有的 API，宁可在编译期炸掉，也不要运行时才崩。
+subprojects {
+    configurations.all {
+        resolutionStrategy {
+            force("androidx.glance:glance-appwidget:1.2.0")
+        }
+    }
+}
+
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
