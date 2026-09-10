@@ -212,10 +212,6 @@ fun LoginField(
             )
         }
     }
-    // borderWidth 参与重组以驱动动画；OutlinedTextField 不暴露描边宽度，
-    // 焦点变化的粗细感由 colors 的对比承担，这里保留读取避免被优化掉。
-    @Suppress("UNUSED_EXPRESSION")
-    borderWidth
 }
 
 /**
