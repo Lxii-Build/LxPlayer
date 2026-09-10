@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.captureToImage
@@ -226,13 +227,15 @@ class ShadowAndGlassTest {
     }
 }
 
-/** 测试用阴影：与卡片实际使用的参数同量级。 */
-private fun Modifier.androidxShadow(): Modifier =
-    this.then(
-        androidx.compose.ui.draw.shadow(
-            elevation = 20.dp,
-            shape = RoundedCornerShape(LxRadius.cover),
-            ambientColor = Color.White,
-            spotColor = Color.White,
-        ),
-    )
+/**
+ * 测试用阴影：与卡片实际使用的参数同量级。
+ *
+ * 阴影色用白色而非默认黑：纯黑背景上黑色阴影不可见，
+ * 测不出「阴影有没有渲染」。
+ */
+private fun Modifier.androidxShadow(): Modifier = this.shadow(
+    elevation = 20.dp,
+    shape = RoundedCornerShape(LxRadius.cover),
+    ambientColor = Color.White,
+    spotColor = Color.White,
+)
