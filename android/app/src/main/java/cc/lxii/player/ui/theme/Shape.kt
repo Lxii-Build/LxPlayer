@@ -20,7 +20,7 @@ object LxRadius {
     val hero = 24.dp
 
     /** 推荐卡外层，与参考实现一致。 */
-    val featuredCard = 28.dp
+    val featuredCard = 4.dp
 
     /** 播放页封面。 */
     val stageCover = 14.dp

@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
 val LxTypography = Typography(
     headlineLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Black,
+        fontWeight = FontWeight.Normal,
         fontSize = 30.sp,
         lineHeight = 36.sp,
         letterSpacing = (-0.8).sp,

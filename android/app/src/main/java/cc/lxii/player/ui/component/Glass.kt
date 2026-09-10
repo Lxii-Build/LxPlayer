@@ -46,14 +46,6 @@ fun Modifier.glassSurface(
         )
         .clip(shape)
         .background(scheme.surface.copy(alpha = effectiveAlpha))
-        .background(
-            Brush.verticalGradient(
-                colors = listOf(
-                    Color.White.copy(alpha = 0.24f),
-                    Color.Transparent,
-                ),
-            ),
-        )
         .border(
             width = 1.dp,
             color = Color.White.copy(alpha = 0.18f),
