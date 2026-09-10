@@ -34,28 +34,25 @@ Android 音乐播放器。视觉参考 Cyrene 的中性灰与玻璃胶囊导航�
 APK 只在 GitHub Actions 上构建，本地不需要 Android SDK。工作流会：
 
 1. 跑后端 `go vet` + `go test`
-2. 跑 Android JVM 单测与 Lint，并把测试数量写进 Job Summary（0 个测试直接判失败）
-3. **用 Robolectric 真渲染界面并导出 PNG**（首页深/浅色、播放页含歌词、玻璃导航），
-   作为 `lxplayer-screenshots` 产物上传。每张图断言不透明像素 >90%，
-   挡住「渲染成空白却看着有图」。截图目录刻意放在 `build/` 之外并关掉任务缓存——
-   否则缓存命中时测试会被跳过，而旧图被一起恢复，上传的就是上一轮的证据
-4. **跑风格几何断言**：圆角是否真被裁出、扇形三层是否错开、唱盘包围盒是否为正方形、
-   玻璃是否透出背景色、均衡器是否为三根分离竖条、当前歌词行是否更大。
-   CI 硬性要求这四个风格测试类都必须执行，缺任一就失败——
-   只看测试总数发现不了某个类被静默漏掉
-5. **一次产出 debug 和 release 两个 APK**
-6. 用同一张 PKCS12 给两个变体签名
-7. 用 `apksigner` 提取两者 SHA-256 并逐字节比对，不一致就让任务失败
-8. 把两个 APK 和 R8 mapping 作为 Artifact 上传
+2. 跑 `flutter test`（Dart 单测）
+3. **一次产出 debug 和 release 两个 APK**
+4. 用同一张 PKCS12 给两个变体签名
+5. 用 `apksigner` 提取两者 SHA-256 并逐字节比对，不一致就让任务失败
+6. 把两个 APK 作为 Artifact 上传
 
-固定密钥库在 `android/keystore/lxplayer-debug.p12`（口令 `android`，别名 `lxplayer`），
+> **待补（重要）**：`702c545` 换成 Flutter 底座时，重写前的 21 个 Kotlin 测试被整体删除，
+> 其中包括 Robolectric 真渲染截图和风格几何断言（圆角、扇形三层、唱盘、玻璃、均衡器、
+> 歌词行高）。目前还没有对应的 Dart 版本，也就是说「风格到底做出来没有」现在
+> **没有任何自动化证据**，只能靠人眼看截图。补回来是接下来的第一优先级。
+
+固定密钥库在 `app/android/keys/lxplayer-release.p12`（口令 `lxplayer`，别名 `lxplayer`），
 证书指纹：
 
 ```
-CC:4A:58:23:7C:47:B2:7C:87:2C:EB:94:7F:C8:E8:F7:21:1D:55:45:68:8B:BC:A9:65:14:73:A6:1A:71:C8:DD
+39:B3:DA:9A:FB:B9:EB:C7:0F:BB:F6:BA:75:F1:BC:4F:C2:D6:3A:A8:56:9E:1E:FE:7A:FC:B5:F4:F6:34:B8:76
 ```
 
-仓库 Secret `ANDROID_KEYSTORE_BASE64` 存在时优先用它。无论走哪条路径，
+仓库 Secret `LXPLAYER_KEYSTORE_BASE64` 存在时优先用它。无论走哪条路径，
 debug 与 release 都指向同一个 `storeFile`，所以两者签名必然一致。
 
 之所以要把 debug 密钥库提交进仓库：CI runner 每次都是全新机器，

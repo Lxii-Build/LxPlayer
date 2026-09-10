@@ -33,6 +33,14 @@ captures/
 *.apk
 *.aab
 
+# 盯 CI 时留下的临时文件（构建日志、run/job 接口快照）
+.ci.log
+.jid
+.jobs.json
+.runs.json
+.run*.json
+.runid
+
 # Go
 server/lxplayer-server
 server/*.db
