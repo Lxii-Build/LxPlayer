@@ -42,16 +42,19 @@ subprojects {
 // plugins.withId 没有这个问题——插件已应用就立刻回调，后应用则等应用时回调，
 // 两种时机都能拿到 android 扩展。
 subprojects {
-    // :app 自己已经配好了配套的 11/11，把它排除掉。若只把它的 Kotlin 顶到 17
-    // 而 Java 仍是 11，反而会触发「Inconsistent JVM-target compatibility」。
-    if (name == "app") return@subprojects
+    // :app 被上面的 evaluationDependsOn 提前求值过了，再对它注册 afterEvaluate
+    // 会直接抛 "Cannot run Project.afterEvaluate(Action) when the project is
+    // already evaluated"。它自己也有一套配套的 11/11，本来就不该动。
+    if (state.executed) return@subprojects
 
-    listOf("com.android.library", "com.android.application").forEach { pluginId ->
-        plugins.withId(pluginId) {
-            (extensions.findByName("android") as? com.android.build.gradle.BaseExtension)?.compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
+    // 必须等插件自己的脚本跑完再覆盖：上一步试过 plugins.withId，它在插件「应用
+    // 时刻」就回调，随后插件脚本里的 android { compileOptions } 会把 17 盖回 11，
+    // 于是 :audio_session 出现 Java 11 / Kotlin 17 的不一致。afterEvaluate 才在
+    // 子工程自身配置之后。
+    afterEvaluate {
+        (extensions.findByName("android") as? com.android.build.gradle.BaseExtension)?.compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_17
+            targetCompatibility = JavaVersion.VERSION_17
         }
     }
     // 必须用 compilerOptions：Kotlin 2.2.20 起访问 kotlinOptions 不再是警告，
