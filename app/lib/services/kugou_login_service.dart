@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'account_backend_service.dart';
 import 'url_service.dart';
 import 'audio_source_service.dart';
 import 'auth_service.dart';
@@ -216,6 +217,10 @@ class KugouLoginService extends ChangeNotifier {
 
   // ===== Third-party accounts =====
   Future<Map<String, dynamic>> fetchBindings() async {
+    // 账号绑定属于官方后端能力；自研后端不支持，显式失败而不是静默返回空。
+    if (AccountBackendService().isSelfHosted) {
+      throw UnsupportedAccountOperationException('账号绑定');
+    }
     final token = AuthService().token;
     final r = await http.get(
       Uri.parse(UrlService().accountsBindingsUrl),

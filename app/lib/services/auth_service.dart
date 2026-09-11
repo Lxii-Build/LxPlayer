@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'account_backend_service.dart';
 import 'developer_mode_service.dart';
 import 'url_service.dart';
 import 'auth_overlay_service.dart';
@@ -149,6 +150,17 @@ class AuthService extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// selfHosted（自研后端）下不支持的操作：返回明确失败结果，UI 可直接展示 message。
+  ///
+  /// 绝不静默降级为「成功」。official 模式不会走到这里。
+  Map<String, dynamic> _unsupported(String operation) {
+    return {
+      'success': false,
+      'unsupported': true,
+      'message': AccountBackendService().unsupportedMessage(operation),
+    };
+  }
+
   Future<void> loginWithToken({required String token, Map<String, dynamic>? userJson}) async {
     _authToken = token;
     await _saveTokenToStorage(token);
@@ -170,6 +182,14 @@ class AuthService extends ChangeNotifier {
 
   /// 检查注册状态
   Future<Map<String, dynamic>> checkRegistrationStatus() async {
+    if (AccountBackendService().isSelfHosted) {
+      return {
+        'success': false,
+        'enabled': false,
+        'unsupported': true,
+        'message': AccountBackendService().unsupportedMessage('查询注册状态'),
+      };
+    }
     try {
       final url = '${UrlService().baseUrl}/auth/registration-status';
 
@@ -207,6 +227,14 @@ class AuthService extends ChangeNotifier {
 
   /// 检查 Linux Do 登录状态
   Future<Map<String, dynamic>> checkLinuxDoStatus() async {
+    if (AccountBackendService().isSelfHosted) {
+      return {
+        'success': false,
+        'enabled': false,
+        'unsupported': true,
+        'message': AccountBackendService().unsupportedMessage('LinuxDo 登录状态'),
+      };
+    }
     try {
       final url = '${UrlService().baseUrl}/auth/linuxdo-status';
 
@@ -246,6 +274,9 @@ class AuthService extends ChangeNotifier {
     required String email,
     required String username,
   }) async {
+    if (AccountBackendService().isSelfHosted) {
+      return _unsupported('发送注册验证码');
+    }
     try {
       final url = '${UrlService().baseUrl}/auth/register/send-code';
       final requestBody = {
@@ -297,6 +328,9 @@ class AuthService extends ChangeNotifier {
     required String password,
     required String code,
   }) async {
+    if (AccountBackendService().isSelfHosted) {
+      return _unsupported('注册');
+    }
     try {
       final url = '${UrlService().baseUrl}/auth/register';
       final requestBody = {
@@ -353,6 +387,30 @@ class AuthService extends ChangeNotifier {
     required String account,
     required String password,
   }) async {
+    // selfHosted（自研后端）：只支持登录，走独立实现并映射到现有 User。
+    // official（默认）路径保持逐字节不变，见下方 try 块。
+    if (AccountBackendService().isSelfHosted) {
+      try {
+        final result = await AccountBackendService()
+            .login(email: account, password: password);
+        _currentUser = result.user;
+        _authToken = result.token;
+        _isLoggedIn = true;
+        await _saveUserToStorage(_currentUser!);
+        await _saveTokenToStorage(_authToken!);
+        notifyListeners();
+        return {
+          'success': true,
+          'message': result.message,
+          'user': _currentUser,
+        };
+      } on UnsupportedAccountOperationException catch (e) {
+        return {'success': false, 'unsupported': true, 'message': e.message};
+      } catch (e) {
+        return {'success': false, 'message': '网络错误: ${e.toString()}'};
+      }
+    }
+
     try {
       final response = await http.post(
         Uri.parse('${UrlService().baseUrl}/auth/login'),
@@ -399,6 +457,9 @@ class AuthService extends ChangeNotifier {
 
   /// Linux Do 授权登录
   Future<Map<String, dynamic>> loginWithLinuxDo() async {
+    if (AccountBackendService().isSelfHosted) {
+      return _unsupported('LinuxDo 登录');
+    }
     const clientId = '92bIhRkScTeJvJkb3a6w69xX7RoO7wbB';
     const redirectUri = 'http://127.0.0.1:40555/oauth/callback';
     const authUrl = 'https://connect.linux.do/oauth2/authorize?response_type=code&client_id=$clientId&redirect_uri=$redirectUri&state=login';
@@ -648,6 +709,9 @@ class AuthService extends ChangeNotifier {
   /// 
   /// 当通过 WebView 获取到授权码后，调用此方法完成登录
   Future<Map<String, dynamic>> loginWithLinuxDoCode(String code) async {
+    if (AccountBackendService().isSelfHosted) {
+      return _unsupported('LinuxDo 登录');
+    }
     try {
       print('🔑 [AuthService] 使用授权码登录 Linux Do...');
       DeveloperModeService().addLog('🔑 [AuthService] 使用授权码登录...');
@@ -695,6 +759,9 @@ class AuthService extends ChangeNotifier {
   Future<Map<String, dynamic>> sendResetCode({
     required String email,
   }) async {
+    if (AccountBackendService().isSelfHosted) {
+      return _unsupported('发送重置密码验证码');
+    }
     try {
       final url = '${UrlService().baseUrl}/auth/reset-password/send-code';
       final requestBody = {'email': email};
@@ -741,6 +808,9 @@ class AuthService extends ChangeNotifier {
     required String code,
     required String newPassword,
   }) async {
+    if (AccountBackendService().isSelfHosted) {
+      return _unsupported('重置密码');
+    }
     try {
       final url = '${UrlService().baseUrl}/auth/reset-password';
       final requestBody = {
@@ -811,6 +881,20 @@ class AuthService extends ChangeNotifier {
     if (_authToken == null || _authToken!.isEmpty) {
       return false;
     }
+    // selfHosted：用 GET /api/v1/me 校验并刷新用户信息。
+    if (AccountBackendService().isSelfHosted) {
+      try {
+        final user = await AccountBackendService().fetchMe(_authToken!);
+        _currentUser = user;
+        _isLoggedIn = true;
+        await _saveUserToStorage(user);
+        notifyListeners();
+        return true;
+      } catch (_) {
+        await handleUnauthorized();
+        return false;
+      }
+    }
     try {
       final url = '${UrlService().baseUrl}/auth/validate-token';
       final r = await http.get(
@@ -844,6 +928,10 @@ class AuthService extends ChangeNotifier {
         'success': false,
         'message': '未登录',
       };
+    }
+
+    if (AccountBackendService().isSelfHosted) {
+      return _unsupported('修改用户名');
     }
 
     try {
@@ -904,6 +992,10 @@ class AuthService extends ChangeNotifier {
         'success': false,
         'message': '用户未登录',
       };
+    }
+
+    if (AccountBackendService().isSelfHosted) {
+      return _unsupported('更新 IP 归属地');
     }
 
     try {
