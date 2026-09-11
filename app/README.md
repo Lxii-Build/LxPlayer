@@ -1,5 +1,5 @@
 
-# Cyrene Music 🎵
+# LxPlayer 🎵
 
 一个功能完善的跨平台音乐播放器，使用 Flutter 开发。
 

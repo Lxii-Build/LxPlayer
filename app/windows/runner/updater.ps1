@@ -1,4 +1,4 @@
-# Cyrene Music Standalone Updater
+# LxPlayer Standalone Updater
 # This script runs after the main program closes to replace files and restart the app
 
 param(
@@ -32,7 +32,7 @@ function Write-Log {
 }
 
 Write-Log "========================================="
-Write-Log "Cyrene Music Updater Started"
+Write-Log "LxPlayer Updater Started"
 Write-Log "Install Directory: $InstallDir"
 Write-Log "Update Directory: $UpdateDir"
 Write-Log "Main Program Path: $ExePath"

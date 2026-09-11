@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "Cyrene Music" "\0"
-            VALUE "FileDescription", "Cyrene Music - Modern Music Player" "\0"
+            VALUE "CompanyName", "LxPlayer" "\0"
+            VALUE "FileDescription", "LxPlayer - Modern Music Player" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "CyreneMusic" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2025 Cyrene Music. All rights reserved." "\0"
-            VALUE "OriginalFilename", "cyrene_music.exe" "\0"
-            VALUE "ProductName", "Cyrene Music" "\0"
+            VALUE "InternalName", "LxPlayer" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2025 LxPlayer. All rights reserved." "\0"
+            VALUE "OriginalFilename", "lxplayer.exe" "\0"
+            VALUE "ProductName", "LxPlayer" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
