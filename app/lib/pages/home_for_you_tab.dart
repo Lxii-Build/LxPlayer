@@ -17,7 +17,6 @@ import 'home_page/bento_playlist_grid.dart';
 import 'home_page/horizontal_playlist_carousel.dart';
 import 'home_page/mixed_playlist_grid.dart';
 import 'home_page/newsong_cards.dart';
-import 'home_page/mobile_daily_recommend_card.dart';
 import 'home_page/swipe_recommend_card.dart';
 import 'home_page/mobile_personal_fm.dart';
 import 'home_page/mobile_playlist_grid.dart';
@@ -294,12 +293,12 @@ class _HomeForYouTabState extends State<HomeForYouTab> {
                     onPlay: (track) => _playRecommended(track, data.dailySongs),
                     onIndexChanged: (index, direction) =>
                         _onRecommendIndexChanged(direction, data.dailySongs),
+                    // 原来由 MobileDailyRecommendCard 承担的「查看全部」入口，
+                    // 去重后接到同一张卡片头部，功能入口不丢。
+                    onOpenDetail: () =>
+                        widget.onOpenDailyDetail?.call(data.dailySongs),
                   ),
                 ),
-              MobileDailyRecommendCard(
-                tracks: data.dailySongs,
-                onOpenDetail: () => widget.onOpenDailyDetail?.call(data.dailySongs),
-              ),
               SizedBox(height: isCupertino ? 24 : 32),
               SectionTitle(title: '私人FM'),
               MobilePersonalFm(list: data.fm),
