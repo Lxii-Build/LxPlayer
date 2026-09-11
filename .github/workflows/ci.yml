@@ -183,3 +183,66 @@ jobs:
           name: lxplayer-debug-${{ github.sha }}
           path: app/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
+
+  # 独立的视觉基线 job：**故意**与 android job 分开。
+  # - 只跑 app/test_visual/（不在 app/test/ 下，因此 android 的 `flutter test` 不会碰到它）；
+  # - continue-on-error：它产出的是「待人工审阅的图片」，不该把流水线卡红；
+  # - --update-goldens：首轮没有基线图，先重新生成、不比对（详见 app/test_visual/README.md）。
+  visual:
+    name: 视觉基线（golden，需人工审阅）
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: 拉取依赖
+        run: flutter pub get
+
+      # 首轮基准：没有已提交的 golden，用 --update-goldens 直接生成。
+      # 不接 `|| true`——玻璃分支依赖 GPU/着色器，headless 下可能失败，
+      # 让这一步**红出来**以便定位，但整条流水线靠 job 级 continue-on-error 保持绿。
+      - name: 生成视觉基线
+        run: flutter test test_visual --update-goldens --reporter expanded
+
+      - name: 写入 Job Summary
+        if: always()
+        run: |
+          {
+            echo "## 视觉基线（golden）"
+            echo ""
+            echo "本 job 只跑 \`app/test_visual/\`，产物是**待人工审阅的图片**，不是回归门禁。"
+            echo ""
+            echo "**能证明什么**：本仓库当前代码在固定尺寸下的渲染结果。"
+            echo "**不能证明什么**：golden **不代表**「和参考项目长得一样」——"
+            echo "它只能对照本仓库自己的历史基线，还原度仍要靠人看真机 + 参考实现。"
+            echo ""
+            echo "已知限制（审阅时请注意）："
+            echo "- 测试环境不加载应用/系统字体，文字通常渲染为**方块**；请重点看布局、间距、几何、配色，"
+            echo "不要为了好看往仓库塞大字体包。"
+            echo "- \`LxSurface\` 玻璃分支只在 Cupertino/Oculus 真机命中，headless 无法触发；"
+            echo "\`lx_surface_glass.png\` 用同一套公共参数直接绘制，仅供参考。"
+            echo "- 玻璃依赖 GPU/驱动，不同机器像素可能有差异。"
+            echo ""
+            echo "这是**首轮基准**：请人工审阅图片，确认无误后再提交入库。"
+            echo "产物名：\`lxplayer-visuals-${{ github.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # 与 android job 的 if-no-files-found: error 不同，这里用 warn：
+      # 只要求「尽量拿到图」，缺某张图不该让 job 失败。
+      - name: 上传视觉基线
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lxplayer-visuals-${{ github.sha }}
+          path: app/test_visual/goldens
+          if-no-files-found: warn

@@ -95,3 +95,19 @@ bun run src/index.ts
   第三方账号绑定、LinuxDo 登录、IP 归属地更新等在 selfHosted 模式下会**明确提示「该后端不支持」**，
   不会静默成功。
 
+### 视觉基线（golden）
+
+`app/test_visual/` 下有一组 golden 测试，渲染关键界面（`LxSurface` 三框架分支、扇形封面堆叠、
+推荐卡、当前歌词窗口）作为**人工审阅用的视觉基线**。它们**不在** `app/test/` 下，
+所以默认 `flutter test` 不会跑到，不影响常规单测。
+
+```bash
+cd app
+flutter test test_visual --update-goldens
+```
+
+由独立的 CI job `visual`（`continue-on-error: true`）生成并上传图片产物
+（`lxplayer-visuals-<sha>`）。注意：golden **不代表**「和参考项目长得一样」，只代表本仓库
+当前的渲染结果；且测试环境不加载字体，文字通常渲染为方块。详见
+[`test_visual/README.md`](test_visual/README.md)。
+
