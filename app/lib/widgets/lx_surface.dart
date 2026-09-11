@@ -4,7 +4,7 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../utils/theme_manager.dart';
 
-/// 卡片 / 面板表面的风格。
+/// 卡片 / 面板 / 控件的表面风格。
 enum LxSurfaceStyle {
   /// Cupertino / Oculus：液态玻璃。
   glass,
@@ -37,6 +37,18 @@ LxSurfaceStyle resolveLxSurfaceStyle({
   return LxSurfaceStyle.solid;
 }
 
+/// 从 `BuildContext` 解析当前表面风格。
+///
+/// 所有需要按框架分支的组件都走这一个入口，避免 `Platform.isXXX` 分支散落各处。
+LxSurfaceStyle lxSurfaceStyleOf(BuildContext context) {
+  final themeManager = ThemeManager();
+  return resolveLxSurfaceStyle(
+    isCupertino: themeManager.isCupertinoFramework,
+    isOculus: themeManager.isOculusFramework,
+    hasFluentTheme: fluent.FluentTheme.maybeOf(context) != null,
+  );
+}
+
 /// 全应用统一的「卡片 / 面板」表面。
 ///
 /// 四套框架（Material / Fluent / Cupertino / Oculus）的唯一分支入口：
@@ -60,42 +72,22 @@ class LxSurface extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeManager = ThemeManager();
-    final style = resolveLxSurfaceStyle(
-      isCupertino: themeManager.isCupertinoFramework,
-      isOculus: themeManager.isOculusFramework,
-      hasFluentTheme: fluent.FluentTheme.maybeOf(context) != null,
-    );
-
-    switch (style) {
-      case LxSurfaceStyle.glass:
-        return _buildGlass(context);
-      case LxSurfaceStyle.fluent:
-        return _buildFluent();
-      case LxSurfaceStyle.solid:
-        return _buildSolid(context);
-    }
+    final style = lxSurfaceStyleOf(context);
+    return switch (style) {
+      LxSurfaceStyle.glass => _buildGlass(context),
+      LxSurfaceStyle.fluent => _buildFluent(),
+      LxSurfaceStyle.solid => _buildSolid(context),
+    };
   }
 
   /// 液态玻璃表面。折射参数逐字抄底座先例 `mini_player.dart:504-523`，
   /// 不新造视觉语言。
   Widget _buildGlass(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GlassContainer(
       shape: LiquidRoundedSuperellipse(borderRadius: borderRadius),
       useOwnLayer: true,
       quality: GlassQuality.standard,
-      settings: LiquidGlassSettings(
-        thickness: isDark ? 35 : 20,
-        blur: isDark ? 4 : 3,
-        chromaticAberration: 0.3,
-        refractiveIndex: 1.5,
-        saturation: isDark ? 0.7 : 0.5,
-        lightIntensity: isDark ? 0.6 : 0.4,
-        ambientStrength: 1.0,
-        specularSharpness: GlassSpecularSharpness.medium,
-        glassColor: isDark ? const Color(0x3DFFFFFF) : const Color(0x1AFFFFFF),
-      ),
+      settings: _glassSettings(context),
       child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
     );
   }
@@ -121,4 +113,95 @@ class LxSurface extends StatelessWidget {
       child: child,
     );
   }
+}
+
+/// 胶囊型底座的内容构建器。
+///
+/// 底座负责背景（玻璃 / 实心），把最终的**内容前景色**回传给调用方，
+/// 这样按钮文字/图标在两种背景上都能保持可读。
+typedef LxPillBuilder = Widget Function(
+  BuildContext context,
+  LxSurfaceStyle style,
+  Color foreground,
+);
+
+/// 胶囊型「主操作」底座（视觉层，不含手势）。
+///
+/// 移动端 Cupertino / Oculus 下用液态玻璃底座（替换原先的 Material
+/// `FilledButton`），其余框架退化为实心胶囊，保持主操作的可点读性。
+/// 玻璃参数与 [LxSurface] 完全一致，不新造视觉语言。
+class LxPill extends StatelessWidget {
+  const LxPill({
+    super.key,
+    required this.builder,
+    this.enabled = true,
+    this.borderRadius = 24,
+    this.padding,
+  });
+
+  final LxPillBuilder builder;
+  final bool enabled;
+  final double borderRadius;
+  final EdgeInsetsGeometry? padding;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = lxSurfaceStyleOf(context);
+    final cs = Theme.of(context).colorScheme;
+    final pad = padding ?? const EdgeInsets.symmetric(horizontal: 20);
+    return switch (style) {
+      LxSurfaceStyle.glass => _glassPill(context, cs, pad),
+      LxSurfaceStyle.fluent => _solidPill(context, cs, pad),
+      LxSurfaceStyle.solid => _solidPill(context, cs, pad),
+    };
+  }
+
+  Widget _glassPill(BuildContext context, ColorScheme cs, EdgeInsetsGeometry pad) {
+    final foreground = enabled ? cs.primary : cs.onSurfaceVariant;
+    return GlassContainer(
+      shape: LiquidRoundedSuperellipse(borderRadius: borderRadius),
+      useOwnLayer: true,
+      quality: GlassQuality.standard,
+      settings: _glassSettings(context),
+      child: Padding(
+        padding: pad,
+        child: builder(context, LxSurfaceStyle.glass, foreground),
+      ),
+    );
+  }
+
+  Widget _solidPill(
+    BuildContext context,
+    ColorScheme cs,
+    EdgeInsetsGeometry pad,
+  ) {
+    final background =
+        enabled ? cs.primaryContainer : cs.surfaceContainerHighest;
+    final foreground =
+        enabled ? cs.onPrimaryContainer : cs.onSurfaceVariant;
+    return Container(
+      padding: pad,
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+      child: builder(context, LxSurfaceStyle.solid, foreground),
+    );
+  }
+}
+
+/// 统一的液态玻璃参数。逐字抄底座先例 `mini_player.dart:504-523`。
+LiquidGlassSettings _glassSettings(BuildContext context) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return LiquidGlassSettings(
+    thickness: isDark ? 35 : 20,
+    blur: isDark ? 4 : 3,
+    chromaticAberration: 0.3,
+    refractiveIndex: 1.5,
+    saturation: isDark ? 0.7 : 0.5,
+    lightIntensity: isDark ? 0.6 : 0.4,
+    ambientStrength: 1.0,
+    specularSharpness: GlassSpecularSharpness.medium,
+    glassColor: isDark ? const Color(0x3DFFFFFF) : const Color(0x1AFFFFFF),
+  );
 }

@@ -492,6 +492,9 @@ class _OpenDetailChip extends StatelessWidget {
 ///
 /// 点击分别走 `onPlay(track)` / `pause()` / `resume()`；三态用图标 + 文案区分，
 /// 切换时做缩放淡入淡出，不只换图标。
+///
+/// 底座不再用 Material `FilledButton`：交给 [LxPill]（Cupertino/Oculus 下是
+/// 液态玻璃胶囊，其余框架退化为实心胶囊），前景色由底座按分支回传。
 class _PlayPill extends StatelessWidget {
   const _PlayPill({required this.track, this.onPlay});
 
@@ -513,25 +516,59 @@ class _PlayPill extends StatelessWidget {
         );
         final canAct = state != PlayButtonState.idle || onPlay != null;
 
-        return FilledButton.icon(
-          onPressed: canAct ? () => _handleTap(player, state) : null,
-          icon: AnimatedSwitcher(
-            duration: SwipeAnimations.stateDuration,
-            switchInCurve: SwipeAnimations.stateCurve,
-            switchOutCurve: SwipeAnimations.stateCurve,
-            transitionBuilder: (child, animation) => ScaleTransition(
-              scale: animation,
-              child: FadeTransition(opacity: animation, child: child),
+        // 底座提供背景并把前景色交回来；手势与按压反馈复用 [_PressableScale]。
+        return _PressableScale(
+          onTap: canAct ? () => _handleTap(player, state) : null,
+          child: LxPill(
+            enabled: canAct,
+            builder: (context, style, foreground) => Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _iconSwitcher(state, foreground),
+                const SizedBox(width: 8),
+                _labelSwitcher(state, foreground),
+              ],
             ),
-            child: Icon(_iconFor(state), key: ValueKey<PlayButtonState>(state)),
-          ),
-          label: Text(_labelFor(state)),
-          style: FilledButton.styleFrom(
-            shape: const StadiumBorder(),
-            padding: const EdgeInsets.symmetric(horizontal: 20),
           ),
         );
       },
+    );
+  }
+
+  Widget _iconSwitcher(PlayButtonState state, Color foreground) {
+    return AnimatedSwitcher(
+      duration: SwipeAnimations.stateDuration,
+      switchInCurve: SwipeAnimations.stateCurve,
+      switchOutCurve: SwipeAnimations.stateCurve,
+      transitionBuilder: (child, animation) => ScaleTransition(
+        scale: animation,
+        child: FadeTransition(opacity: animation, child: child),
+      ),
+      child: Icon(
+        _iconFor(state),
+        key: ValueKey<PlayButtonState>(state),
+        size: 20,
+        color: foreground,
+      ),
+    );
+  }
+
+  Widget _labelSwitcher(PlayButtonState state, Color foreground) {
+    return AnimatedSwitcher(
+      duration: SwipeAnimations.stateDuration,
+      switchInCurve: SwipeAnimations.stateCurve,
+      switchOutCurve: SwipeAnimations.stateCurve,
+      transitionBuilder: (child, animation) =>
+          FadeTransition(opacity: animation, child: child),
+      child: Text(
+        _labelFor(state),
+        key: ValueKey<PlayButtonState>(state),
+        style: TextStyle(
+          color: foreground,
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -549,26 +586,17 @@ class _PlayPill extends StatelessWidget {
     }
   }
 
-  IconData _iconFor(PlayButtonState state) {
-    switch (state) {
-      case PlayButtonState.playingCurrent:
-        return Icons.pause_rounded;
-      case PlayButtonState.pausedCurrent:
-      case PlayButtonState.idle:
-        return Icons.play_arrow_rounded;
-    }
-  }
+  IconData _iconFor(PlayButtonState state) => switch (state) {
+        PlayButtonState.playingCurrent => Icons.pause_rounded,
+        PlayButtonState.pausedCurrent => Icons.play_arrow_rounded,
+        PlayButtonState.idle => Icons.play_arrow_rounded,
+      };
 
-  String _labelFor(PlayButtonState state) {
-    switch (state) {
-      case PlayButtonState.playingCurrent:
-        return '暂停';
-      case PlayButtonState.pausedCurrent:
-        return '继续';
-      case PlayButtonState.idle:
-        return '播放';
-    }
-  }
+  String _labelFor(PlayButtonState state) => switch (state) {
+        PlayButtonState.playingCurrent => '暂停',
+        PlayButtonState.pausedCurrent => '继续',
+        PlayButtonState.idle => '播放',
+      };
 }
 
 /// 可点控件的按压反馈：按下缩到 [SwipeAnimations.pressScale]，
