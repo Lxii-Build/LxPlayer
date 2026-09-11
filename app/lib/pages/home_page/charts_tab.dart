@@ -9,6 +9,7 @@ import '../../services/player_service.dart';
 import '../../services/music_service.dart';
 import '../../utils/theme_manager.dart';
 import 'home_widgets.dart';
+import 'swipe_recommend_card.dart';
 import 'toplist_detail.dart';
 import '../../widgets/oculus/oculus_home_widgets.dart';
 import '../../widgets/skeleton_loader.dart';
@@ -126,78 +127,27 @@ class ChartsTab extends StatelessWidget {
   Widget _buildFeaturedSection(BuildContext context, BoxConstraints constraints) {
     if (cachedRandomTracks.isEmpty) return const SizedBox.shrink();
 
-    // 如果宽度足够，使用 Bento Grid 布局
-    final isDesktop = constraints.maxWidth > 900;
-    
-    if (isDesktop && cachedRandomTracks.length >= 3) {
-      final height = 320.0;
-      
-      return SizedBox(
-        height: height,
-        child: Row(
-          children: [
-            // 主推荐位
-            Expanded(
-              flex: 2,
-              child: _FeaturedCard(
-                track: cachedRandomTracks[0],
-                checkLoginStatus: checkLoginStatus,
-                isLarge: true,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              flex: 1,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: _FeaturedCard(
-                      track: cachedRandomTracks[1],
-                      checkLoginStatus: checkLoginStatus,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: _FeaturedCard(
-                      track: cachedRandomTracks[2],
-                      checkLoginStatus: checkLoginStatus,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    } 
-    
-    // 窄屏布局
+    // 桌面端与窄屏共用同一张卡。此前桌面端是 Bento 三宫格、窄屏是一大两窄的
+    // 轮播，两种观感都跟「每日推荐」对不上，统一成三层扇形封面 + 离散跳变滑动。
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 24.0),
           child: Text(
-            '今日推荐',
+            '每日推荐',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w800,
               letterSpacing: -0.5,
             ),
           ),
         ),
-        SizedBox(
-          height: 240,
-          child: CarouselView.weighted(
-            flexWeights: const [7, 2, 1], // 强制比例：一大(70%), 一中(20%), 一小(10%)
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            children: cachedRandomTracks.map((track) {
-              return _FeaturedCard(
-                track: track,
-                checkLoginStatus: checkLoginStatus,
-                showDetails: true,
-              );
-            }).toList(),
-          ),
+        SwipeRecommendCard(
+          tracks: cachedRandomTracks,
+          onPlay: (track) async {
+            await checkLoginStatus();
+            PlayerService().playTrack(track);
+          },
         ),
       ],
     );
@@ -228,167 +178,6 @@ class ChartsTab extends StatelessWidget {
         ],
       );
     }
-  }
-}
-
-class _FeaturedCard extends StatefulWidget {
-  final Track track;
-  final Future<void> Function() checkLoginStatus;
-  final bool isLarge;
-  final bool showDetails;
-
-  const _FeaturedCard({
-    required this.track,
-    required this.checkLoginStatus,
-    this.isLarge = false,
-    this.showDetails = true,
-  });
-
-  @override
-  State<_FeaturedCard> createState() => _FeaturedCardState();
-}
-
-class _FeaturedCardState extends State<_FeaturedCard> {
-  bool _isHovering = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final borderRadius = BorderRadius.circular(28); // Material Expressive 大圆角
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovering = true),
-      onExit: (_) => setState(() => _isHovering = false),
-      child: GestureDetector(
-        onTap: () async {
-          await widget.checkLoginStatus();
-          PlayerService().playTrack(widget.track);
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: borderRadius,
-            boxShadow: _isHovering
-                ? [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 16,
-                      offset: const Offset(0, 8),
-                    )
-                  ]
-                : [],
-          ),
-          child: ClipRRect(
-            borderRadius: borderRadius,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Background Image with Scale Animation
-                AnimatedScale(
-                  scale: _isHovering ? 1.1 : 1.0,
-                  duration: const Duration(milliseconds: 700),
-                  curve: Curves.easeOutCubic,
-                  child: CachedNetworkImage(
-                    imageUrl: widget.track.picUrl,
-                    httpHeaders: getImageHeaders(widget.track.picUrl),
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey[800],
-                    ),
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withOpacity(0.35),
-                        Colors.black.withOpacity(0.85),
-                      ],
-                      stops: const [0.4, 0.7, 1.0],
-                    ),
-                  ),
-                ),
-                if (widget.showDetails)
-                  Positioned(
-                    left: 24,
-                    right: 24,
-                    bottom: 24,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (widget.isLarge)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'Featured',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        SizedBox(height: widget.isLarge ? 8 : 4),
-                        Text(
-                          widget.track.name,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: widget.isLarge ? 28 : 18,
-                            fontWeight: FontWeight.bold,
-                            shadows: const [Shadow(blurRadius: 4, color: Colors.black26)],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        SizedBox(height: widget.isLarge ? 4 : 2),
-                        Text(
-                          '${widget.track.artists} • ${widget.track.album}',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.85),
-                            fontSize: widget.isLarge ? 16 : 14,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-                if (_isHovering || widget.isLarge)
-                  Positioned(
-                    right: 20,
-                    bottom: 20,
-                    child: Container(
-                      padding: EdgeInsets.all(widget.isLarge ? 12 : 8),
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 8,
-                            offset: Offset(0, 4),
-                          )
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.play_arrow_rounded,
-                        color: Colors.black,
-                        size: widget.isLarge ? 32 : 24,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 
