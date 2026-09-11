@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import '../../models/track.dart';
 import '../../services/player_service.dart';
 import '../../services/playlist_queue_service.dart';
 import '../../utils/theme_manager.dart';
 import '../../utils/image_utils.dart';
+import '../../widgets/lx_surface.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'hero_section.dart'; // 复用 convertToTrack 函数
 
@@ -20,8 +20,7 @@ class MobilePersonalFm extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final themeManager = ThemeManager();
     final isCupertino = (Platform.isIOS || Platform.isAndroid) && themeManager.isCupertinoFramework;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     if (list.isEmpty) return Text('暂无数据', style: Theme.of(context).textTheme.bodySmall);
     
     return AnimatedBuilder(
@@ -55,62 +54,33 @@ class MobilePersonalFm extends StatelessWidget {
             // For now we just implement the play logic as required by the card
         };
 
-        if (themeManager.isFluentFramework) {
-          return fluent.Card(
-            padding: EdgeInsets.zero,
-            child: _buildOldCardContent(context, pic, display, artistsText, isFmPlaying, fmTracks, isFmQueue, isFmCurrent, cs, isCupertino),
-          );
-        }
-
-        if (isCupertino) {
-          return Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1C1C1E) : CupertinoColors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: CupertinoColors.black.withOpacity(isDark ? 0.2 : 0.08),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+        // 表面（玻璃 / Fluent 卡 / 实心）由 LxSurface 统一决定，这里只决定内容形态：
+        // Fluent 与 Cupertino 沿用紧凑行（含各自的控件样式），其余走 Material 表现力布局。
+        // 原先三条分支各自手写的容器（写死配色 + 投影 + 渐变）全部撤掉。
+        final bool useCompactContent = themeManager.isFluentFramework || isCupertino;
+        final Widget content = useCompactContent
+            ? _buildOldCardContent(context, pic, display, artistsText, isFmPlaying, fmTracks, isFmQueue, isFmCurrent, cs, isCupertino)
+            // Material 分支保留整卡可点（水波纹）：Material + InkWell 原样保留，
+            // 只把圆角对齐到统一表面的 _surfaceRadius。
+            : Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onOpenPlayer,
+                  borderRadius: BorderRadius.circular(_surfaceRadius),
+                  child: _buildMaterialFmContent(context, pic, display, artistsText, isFmPlaying, fmTracks, isFmQueue, isFmCurrent, cs),
                 ),
-              ],
-            ),
-            child: _buildOldCardContent(context, pic, display, artistsText, isFmPlaying, fmTracks, isFmQueue, isFmCurrent, cs, isCupertino),
-          );
-        }
+              );
 
-        // Android 16 Expressive Style
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(32),
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [
-                cs.surfaceContainer,
-                cs.surfaceContainerHigh.withOpacity(0.9),
-              ],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.25 : 0.04),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onOpenPlayer,
-              borderRadius: BorderRadius.circular(32),
-              child: _buildMaterialFmContent(context, pic, display, artistsText, isFmPlaying, fmTracks, isFmQueue, isFmCurrent, cs),
-            ),
-          ),
+        return LxSurface(
+          borderRadius: _surfaceRadius,
+          child: content,
         );
       },
     );
   }
+
+  /// 与首页推荐卡（`swipe_recommend_card.dart`）一致的统一圆角。
+  static const double _surfaceRadius = 28;
 
   /// 这里的样式代码主要是为了兼容旧版和其他主题
   Widget _buildOldCardContent(

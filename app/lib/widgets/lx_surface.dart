@@ -88,15 +88,47 @@ class LxSurface extends StatelessWidget {
       useOwnLayer: true,
       quality: GlassQuality.standard,
       settings: _glassSettings(context),
-      child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
+      child: _clipped(Padding(padding: padding ?? EdgeInsets.zero, child: child)),
     );
   }
 
   /// 桌面 Fluent：沿用底座一致的 `fluent.Card`。
   Widget _buildFluent() {
+    // 不裁剪时保持改造前的原样结构（padding 交给 Card 自己），既有 Fluent 渲染
+    // 逐像素不变。需要裁剪时才把 padding 挪进来，好让裁剪能包住整块内容。
+    if (clipBehavior == Clip.none) {
+      return fluent.Card(
+        padding: padding ?? EdgeInsets.zero,
+        child: child,
+      );
+    }
     return fluent.Card(
-      padding: padding ?? EdgeInsets.zero,
-      child: child,
+      padding: EdgeInsets.zero,
+      child: _clipped(Padding(padding: padding ?? EdgeInsets.zero, child: child)),
+    );
+  }
+
+  /// 给玻璃 / Fluent 分支补上 [clipBehavior]。
+  ///
+  /// 只有实心分支能把 [clipBehavior] 直接交给 `Container`；玻璃分支的外壳是
+  /// `GlassContainer`、Fluent 分支是 `fluent.Card`，两者都没有 `clipBehavior`
+  /// 入参。不补这一层的话，调用方传的 [clipBehavior] 会被**静默忽略**，紧贴
+  /// 表面边缘的内容（列表首尾行、齐边封面）就会压出圆角。
+  ///
+  /// 裁剪位置对齐 `Container` 的语义——裁在 padding **外面**，即整块内容（含
+  /// 内边距区域）一起被裁到表面轮廓，而不是只裁 padding 里的那块。
+  ///
+  /// 玻璃外形是圆角超椭圆（比同半径圆角矩形更"饱满"），用圆角矩形裁会比外形
+  /// 略收一点点——宁可少露一丝，也不会溢出到轮廓外。
+  ///
+  /// [Clip.none]（默认值，也是既有调用点 `swipe_recommend_card.dart` 的取值）
+  /// 下不插入任何节点，既有渲染保持逐像素不变。
+  Widget _clipped(Widget content) {
+    if (clipBehavior == Clip.none) return content;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      clipBehavior: clipBehavior,
+      child: content,
     );
   }
 

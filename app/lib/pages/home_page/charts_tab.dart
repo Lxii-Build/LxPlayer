@@ -11,6 +11,7 @@ import '../../utils/theme_manager.dart';
 import 'home_widgets.dart';
 import 'swipe_recommend_card.dart';
 import 'toplist_detail.dart';
+import '../../widgets/lx_surface.dart';
 import '../../widgets/oculus/oculus_home_widgets.dart';
 import '../../widgets/skeleton_loader.dart';
 
@@ -310,77 +311,90 @@ class _ToplistTrackCardState extends State<_ToplistTrackCard> {
       onEnter: (_) => setState(() => _isHovering = true),
       onExit: (_) => setState(() => _isHovering = false),
       child: GestureDetector(
+        // 原先靠 `Container(color: Colors.transparent)` 兜住命中测试；换成 LxSurface 后
+        // 玻璃分支的外壳是 GlassContainer，命中行为不再由我们控制，这里显式声明
+        // opaque 保证整张卡照旧可点（写法与 `swipe_recommend_card.dart:338` 一致）。
+        behavior: HitTestBehavior.opaque,
         onTap: () async {
           await widget.checkLoginStatus();
           PlayerService().playTrack(widget.track);
         },
-        child: Container(
+        child: SizedBox(
           width: width,
-          color: Colors.transparent,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ClipRRect(
-                      borderRadius: borderRadius,
-                      child: AnimatedScale(
-                        scale: _isHovering ? 1.05 : 1.0,
-                        duration: const Duration(milliseconds: 200),
-                        child: CachedNetworkImage(
-                          imageUrl: widget.track.picUrl,
-                          httpHeaders: getImageHeaders(widget.track.picUrl),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 4,
-                      left: 4,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
-                          borderRadius: BorderRadius.circular(12),
-                          border: widget.rank < 3 
-                              ? Border.all(color: theme.colorScheme.primary.withOpacity(0.5), width: 1.5)
-                              : Border.all(color: Colors.white10, width: 1),
-                        ),
-                        child: Text(
-                          '#${widget.rank + 1}',
-                          style: TextStyle(
-                            color: widget.rank < 3 ? theme.colorScheme.primary : Colors.white.withOpacity(0.9),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.5,
+          // 表面统一交给 LxSurface（替换原先的 `Container(color: transparent)`：
+          // 榜单卡此前是"裸卡"，没有任何表面，正是首页上下割裂的来源之一）。
+          //
+          // 高度预算复核（外层是 `SizedBox(height: 220)`）：固定高度部分 =
+          // 上下内边距 24 + 间距 12 + 标题约 20 + 副标题约 16 ≈ 72，
+          // 剩下约 148 全部归 Expanded 的封面，不会溢出。封面走 BoxFit.cover，
+          // 尺寸从 160×172 收到约 136×148，只会多裁一点，不会被压变形。
+          // 原先贴在两行文字上的 `horizontal: 4` 内边距由表面的 12 接管，去掉后
+          // 文字与封面依然左对齐。
+          child: LxSurface(
+            borderRadius: _surfaceRadius,
+            padding: const EdgeInsets.all(_surfacePadding),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ClipRRect(
+                        borderRadius: borderRadius,
+                        child: AnimatedScale(
+                          scale: _isHovering ? 1.05 : 1.0,
+                          duration: const Duration(milliseconds: 200),
+                          child: CachedNetworkImage(
+                            imageUrl: widget.track.picUrl,
+                            httpHeaders: getImageHeaders(widget.track.picUrl),
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ),
-                    ),
-                     if (_isHovering)
-                      Center(
+                      Positioned(
+                        top: 4,
+                        left: 4,
                         child: Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            shape: BoxShape.circle,
+                            color: Colors.black.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(12),
+                            border: widget.rank < 3
+                                ? Border.all(color: theme.colorScheme.primary.withOpacity(0.5), width: 1.5)
+                                : Border.all(color: Colors.white10, width: 1),
                           ),
-                          child: const Icon(
-                            Icons.play_arrow_rounded,
-                            size: 24,
-                            color: Colors.black,
+                          child: Text(
+                            '#${widget.rank + 1}',
+                            style: TextStyle(
+                              color: widget.rank < 3 ? theme.colorScheme.primary : Colors.white.withOpacity(0.9),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                            ),
                           ),
                         ),
                       ),
-                  ],
+                      if (_isHovering)
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              size: 24,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: Text(
+                const SizedBox(height: 12),
+                Text(
                   widget.track.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -389,10 +403,7 @@ class _ToplistTrackCardState extends State<_ToplistTrackCard> {
                     letterSpacing: -0.2,
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: Text(
+                Text(
                   widget.track.artists,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -401,11 +412,18 @@ class _ToplistTrackCardState extends State<_ToplistTrackCard> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+
+  /// 与首页推荐卡（`swipe_recommend_card.dart`）一致的统一圆角。
+  static const double _surfaceRadius = 28;
+
+  /// 表面内边距。榜单卡是横向列表里的窄卡（160 宽），用 12 而不是推荐卡的 20：
+  /// 20 会把 160 的封面挤到 120，封面明显变小；12 既能露出表面边框又不吃掉封面。
+  static const double _surfacePadding = 12;
 }

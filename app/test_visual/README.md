@@ -19,7 +19,13 @@ flutter test test_visual --update-goldens
 | `visual_surface_glass_test.dart` | `goldens/lx_surface_glass.png` | `LxSurface` 玻璃分支（尽力而为，见下） |
 | `visual_recommend_test.dart` | `goldens/fan_cover_stack_empty.png` | 扇形封面三层堆叠（空封面占位） |
 | `visual_recommend_test.dart` | `goldens/recommend_card.png` | 首页推荐卡整体 |
+| `visual_home_sections_test.dart` | `goldens/lx_surface_clipped.png` | 统一表面 + `clipBehavior`：内容齐边铺满时的裁剪形态（首页下方区块用的就是这套） |
 | `visual_lyric_test.dart` | `goldens/lyric_window.png` | 当前歌词窗口 |
+
+> 首页推荐卡**下方**的四个区块（新歌列表 / 歌单网格 / 私人FM / 榜单卡）没有各自的
+> golden：它们的内容都要加载图片（`Image.network` / `CachedNetworkImage`），headless
+> 环境取不到图、也没有 `path_provider` 平台通道。这几块「外层确实是同一个表面」由
+> `app/test/home_surface_consistency_test.dart` 断言，观感靠上面那张表面图 + 真机审阅。
 
 ## 这些图能证明什么 / 不能证明什么
 
