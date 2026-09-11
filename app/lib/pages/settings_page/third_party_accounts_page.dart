@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent_ui;
 import '../../widgets/fluent_settings_card.dart';
 import '../../widgets/cupertino/cupertino_settings_widgets.dart';
+import '../../services/account_backend_service.dart';
 import '../../services/auth_service.dart';
 import '../../services/netease_login_service.dart';
 import '../../services/kugou_login_service.dart';
@@ -379,6 +380,10 @@ class _ThirdPartyAccountsContentState extends State<ThirdPartyAccountsContent> {
           );
         }
 
+        if (snapshot.hasError) {
+          return _buildBindingsError('网易云音乐', snapshot.error);
+        }
+
         final bindings = snapshot.data?['data'] as Map<String, dynamic>?;
         final netease = bindings?['netease'] as Map<String, dynamic>?;
         final bound = (netease != null) && (netease['bound'] == true);
@@ -496,6 +501,10 @@ class _ThirdPartyAccountsContentState extends State<ThirdPartyAccountsContent> {
               ],
             ),
           );
+        }
+
+        if (snapshot.hasError) {
+          return _buildBindingsError('酷狗音乐', snapshot.error);
         }
 
         final bindings = snapshot.data?['data'] as Map<String, dynamic>?;
@@ -643,6 +652,35 @@ class _ThirdPartyAccountsContentState extends State<ThirdPartyAccountsContent> {
     );
   }
 
+  /// 绑定信息加载失败（例如自研后端不支持账号绑定）时的**显式**提示。
+  ///
+  /// 目的：不把失败伪装成「未绑定」，避免让用户误以为是自己账号的问题。
+  Widget _buildBindingsError(String serviceName, Object? error) {
+    final message = error is UnsupportedAccountOperationException
+        ? error.message
+        : '加载绑定信息失败，请稍后重试';
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 18),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(serviceName, style: const TextStyle(fontSize: 16)),
+                const SizedBox(height: 2),
+                Text(message, style: const TextStyle(fontSize: 13)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionTitle(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4.0),
@@ -672,6 +710,10 @@ class _ThirdPartyAccountsContentState extends State<ThirdPartyAccountsContent> {
               child: CircularProgressIndicator(strokeWidth: 2),
             ),
           );
+        }
+
+        if (snapshot.hasError) {
+          return _buildBindingsError('网易云音乐', snapshot.error);
         }
 
         final bindings = snapshot.data?['data'] as Map<String, dynamic>?;
@@ -729,6 +771,10 @@ class _ThirdPartyAccountsContentState extends State<ThirdPartyAccountsContent> {
           );
         }
 
+        if (snapshot.hasError) {
+          return _buildBindingsError('酷狗音乐', snapshot.error);
+        }
+
         final bindings = snapshot.data?['data'] as Map<String, dynamic>?;
         final kugou = bindings?['kugou'] as Map<String, dynamic>?;
         final bound = (kugou != null) && (kugou['bound'] == true);
@@ -783,6 +829,10 @@ class _ThirdPartyAccountsContentState extends State<ThirdPartyAccountsContent> {
             );
           }
 
+          if (snapshot.hasError) {
+            return _buildBindingsError('网易云音乐', snapshot.error);
+          }
+
           final bindings = snapshot.data?['data'] as Map<String, dynamic>?;
           final netease = bindings?['netease'] as Map<String, dynamic>?;
           final bound = (netease != null) && (netease['bound'] == true);
@@ -834,6 +884,10 @@ class _ThirdPartyAccountsContentState extends State<ThirdPartyAccountsContent> {
               subtitle: Text('加载中...'),
               trailing: fluent_ui.ProgressRing(),
             );
+          }
+
+          if (snapshot.hasError) {
+            return _buildBindingsError('酷狗音乐', snapshot.error);
           }
 
           final bindings = snapshot.data?['data'] as Map<String, dynamic>?;

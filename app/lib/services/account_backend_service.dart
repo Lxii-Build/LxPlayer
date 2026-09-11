@@ -4,15 +4,15 @@ import 'package:http/http.dart' as http;
 
 import 'auth_service.dart' show User;
 import 'developer_mode_service.dart';
-import 'url_service.dart';
+import 'persistent_storage_service.dart';
 
 /// 账号后端模式。
 enum AccountBackendMode {
   /// 现有第三方后端（**默认**）。行为与历史版本完全一致。
   official,
 
-  /// 自研 Go 后端（opt-in）。需用户自行部署后，在「设置 → 网络」里把「自定义源」
-  /// 指向该后端地址才会生效。
+  /// 自研 Go 后端（opt-in）。需用户自行部署后，**显式**打开自研后端开关并填入地址
+  /// 才会生效（与「自定义源」配置完全无关）。
   selfHosted,
 }
 
@@ -59,7 +59,8 @@ class AccountAuthResult {
 /// **全应用唯一的账号后端选择点。**
 ///
 /// 它只做两件事：
-/// 1. 依据 [UrlService] 里既有的「自定义源」配置判断当前该走哪个后端（不另造配置读取）；
+/// 1. 依据持久化的**独立**配置项（`account_backend_mode` / `account_backend_base_url`）
+///    判断当前该走哪个后端；
 /// 2. 为自研后端（`selfHosted`）提供 login / me 的实现，并对其它能力显式报不支持。
 ///
 /// `official`（默认）模式的请求实现仍在 [AuthService] 内，保持**逐字节不变**——
@@ -74,14 +75,30 @@ class AccountBackendService {
 
   /// 当前账号后端模式。
   ///
-  /// 只有当用户**显式**设置了非空自定义源地址时才是 [AccountBackendMode.selfHosted]；
-  /// 否则一律 [AccountBackendMode.official]（与今天完全一致）。
+  /// 判定条件（**刻意收窄**）：
+  /// - 持久化的 `account_backend_mode` == `selfHosted`，**且**
+  /// - 持久化的 `account_backend_base_url` 非空。
+  ///
+  /// 两者缺一即回退 [AccountBackendMode.official]。
+  /// 用的是**独立键**，与「自定义源」（`backend_source_type` / `custom_base_url`）
+  /// 完全无关——存量用户升级后默认 `official`，不会读取也不会受自定义源影响。
   AccountBackendMode get mode {
-    final url = UrlService();
-    final hasCustom =
-        url.sourceType == BackendSourceType.custom && url.customBaseUrl.isNotEmpty;
-    return hasCustom ? AccountBackendMode.selfHosted : AccountBackendMode.official;
+    final storage = PersistentStorageService();
+    final isSelfHosted =
+        storage.accountBackendMode == AccountBackendMode.selfHosted.name &&
+            storage.accountBackendBaseUrl.trim().isNotEmpty;
+    return isSelfHosted
+        ? AccountBackendMode.selfHosted
+        : AccountBackendMode.official;
   }
+
+  /// 持久化地切换账号后端模式（供调用方 / 未来 UI 使用）。
+  Future<void> setMode(AccountBackendMode value) =>
+      PersistentStorageService().setAccountBackendMode(value.name);
+
+  /// 持久化地设置自研后端地址（供调用方 / 未来 UI 使用）。
+  Future<void> setSelfHostedBaseUrl(String url) =>
+      PersistentStorageService().setAccountBackendBaseUrl(url.trim());
 
   /// 是否使用官方后端（默认）。
   bool get isOfficial => mode == AccountBackendMode.official;
@@ -94,7 +111,11 @@ class AccountBackendService {
       UnsupportedAccountOperationException(operation).message;
 
   // Go 后端固定端点（见 server/main.go:101-106）。
-  String get _selfHostedBase => UrlService().customBaseUrl;
+  // 去掉末尾斜杠，避免拼出 `//api/...`。
+  String get _selfHostedBase {
+    final raw = PersistentStorageService().accountBackendBaseUrl.trim();
+    return raw.endsWith('/') ? raw.substring(0, raw.length - 1) : raw;
+  }
   String get _loginPath => '$_selfHostedBase/api/v1/auth/login';
   String get _mePath => '$_selfHostedBase/api/v1/me';
 

@@ -435,5 +435,25 @@ class PersistentStorageService extends ChangeNotifier {
 
   /// 设置是否启用 QQ 音乐代理播放
   Future<void> setEnableQqProxy(bool value) => setBool('enable_qq_music_proxy', value);
+
+  // ============== 账号后端（自研后端开关） ==============
+
+  /// 账号后端模式：`official`（默认）或 `selfHosted`。
+  ///
+  /// 与「自定义源」（`backend_source_type` / `custom_base_url`）是**完全独立**的键：
+  /// 切换自定义源不会改变账号后端，切换账号后端也不会影响自定义源。
+  /// 未设置过时返回 `official`，保证存量用户升级后账号行为零变化。
+  String get accountBackendMode => getString('account_backend_mode') ?? 'official';
+
+  /// 设置账号后端模式（`official` / `selfHosted`）。
+  Future<void> setAccountBackendMode(String value) =>
+      setString('account_backend_mode', value);
+
+  /// 自研后端地址。仅在 [accountBackendMode] == `selfHosted` 时生效。
+  String get accountBackendBaseUrl => getString('account_backend_base_url') ?? '';
+
+  /// 设置自研后端地址。
+  Future<void> setAccountBackendBaseUrl(String value) =>
+      setString('account_backend_base_url', value);
 }
 
