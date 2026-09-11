@@ -10,6 +10,7 @@ import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../models/track.dart';
 import '../utils/metadata_reader.dart';
+import 'permission_service.dart';
 
 /// 本地音乐库服务：负责扫描目录、管理本地歌曲与歌词
 /// 支持读取音频文件元数据（标题、艺术家、专辑封面等）
@@ -158,39 +159,60 @@ class LocalLibraryService extends ChangeNotifier {
     return _coverCacheDir!;
   }
 
-  /// 选择单首歌曲文件
-  Future<void> pickSingleSong() async {
+  /// 选择单首歌曲文件。
+  ///
+  /// 返回媒体权限结果：非 [MediaPermissionStatus.granted] 表示未授权，调用方需据此提示用户。
+  Future<MediaPermissionStatus> pickSingleSong() async {
+    final permission = await PermissionService().requestAudioPermission();
+    if (permission != MediaPermissionStatus.granted) {
+      return permission;
+    }
+
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: false,
       type: FileType.custom,
       allowedExtensions: supportedAudioExts.toList(),
     );
-    if (result == null || result.files.isEmpty) return;
+    if (result == null || result.files.isEmpty) {
+      return MediaPermissionStatus.granted;
+    }
 
     final path = result.files.single.path;
-    if (path == null) return;
+    if (path == null) return MediaPermissionStatus.granted;
 
     await _addAudioFile(path);
     await _saveLibrary();
     notifyListeners();
+    return MediaPermissionStatus.granted;
   }
 
   /// 选择并扫描一个文件夹（递归）
   /// 在 Android 上由于 SAF 限制，改为选择多个音频文件
-  Future<void> pickAndScanFolder() async {
+  ///
+  /// 返回媒体权限结果：非 [MediaPermissionStatus.granted] 表示未授权，调用方需据此提示用户。
+  Future<MediaPermissionStatus> pickAndScanFolder() async {
+    final permission = await PermissionService().requestAudioPermission();
+    if (permission != MediaPermissionStatus.granted) {
+      return permission;
+    }
+
     if (Platform.isAndroid) {
       // Android 上使用多文件选择模式，因为 SAF 对文件夹访问有限制
-      await _pickMultipleFiles();
+      return _pickMultipleFiles();
     } else {
       // 桌面端正常使用文件夹选择
       final dirPath = await FilePicker.platform.getDirectoryPath();
-      if (dirPath == null || dirPath.isEmpty) return;
-      await scanFolder(dirPath);
+      if (dirPath == null || dirPath.isEmpty) {
+        return MediaPermissionStatus.granted;
+      }
+      return scanFolder(dirPath);
     }
   }
 
-  /// Android 专用：选择多个音频文件
-  Future<void> _pickMultipleFiles() async {
+  /// Android 专用：选择多个音频文件。
+  ///
+  /// 返回媒体权限结果（已在 [pickAndScanFolder] 处校验过，这里仅原样回传）。
+  Future<MediaPermissionStatus> _pickMultipleFiles() async {
     try {
       debugPrint('📀 [LocalLibrary] 开始选择多个音频文件...');
       final result = await FilePicker.platform.pickFiles(
@@ -201,7 +223,7 @@ class LocalLibraryService extends ChangeNotifier {
       
       if (result == null || result.files.isEmpty) {
         debugPrint('📀 [LocalLibrary] 用户取消了文件选择');
-        return;
+        return MediaPermissionStatus.granted;
       }
 
       debugPrint('📀 [LocalLibrary] 选择了 ${result.files.length} 个文件');
@@ -222,12 +244,20 @@ class LocalLibraryService extends ChangeNotifier {
     } catch (e) {
       debugPrint('📀 [LocalLibrary] 选择文件失败: $e');
     }
+    return MediaPermissionStatus.granted;
   }
 
-  /// 扫描指定文件夹（递归）
-  Future<void> scanFolder(String folderPath) async {
+  /// 扫描指定文件夹（递归）。
+  ///
+  /// 扫描前确保已取得媒体读取权限；返回媒体权限结果（未授权时不会进行任何文件访问）。
+  Future<MediaPermissionStatus> scanFolder(String folderPath) async {
+    final permission = await PermissionService().requestAudioPermission();
+    if (permission != MediaPermissionStatus.granted) {
+      return permission;
+    }
+
     final dir = Directory(folderPath);
-    if (!await dir.exists()) return;
+    if (!await dir.exists()) return MediaPermissionStatus.granted;
 
     final List<Future<void>> futures = [];
     await for (final entity in dir.list(recursive: true, followLinks: false)) {
@@ -243,6 +273,7 @@ class LocalLibraryService extends ChangeNotifier {
       await _saveLibrary();
       notifyListeners();
     }
+    return MediaPermissionStatus.granted;
   }
 
   /// 清空已扫描结果

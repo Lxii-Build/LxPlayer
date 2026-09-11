@@ -5,6 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import '../services/local_library_service.dart';
+import '../services/permission_service.dart';
 import '../services/player_service.dart';
 import '../models/track.dart';
 import '../utils/theme_manager.dart';
@@ -222,6 +223,18 @@ class _LocalPageState extends State<LocalPage> {
     if (mounted) setState(() {});
   }
 
+  /// 执行本地导入动作，并在媒体权限缺失时给出**明确提示**（而不是静默失败）。
+  Future<void> _runLocalImport(
+    Future<MediaPermissionStatus> Function() action,
+  ) async {
+    final status = await action();
+    if (!mounted || status == MediaPermissionStatus.granted) return;
+    await PermissionService().showMediaPermissionDialog(
+      context,
+      permanentlyDenied: status == MediaPermissionStatus.permanentlyDenied,
+    );
+  }
+
   bool get _isCupertino => _themeManager.isCupertinoFramework;
   bool get _isAndroid => Theme.of(context).platform == TargetPlatform.android;
 
@@ -254,16 +267,12 @@ class _LocalPageState extends State<LocalPage> {
               IconButton(
                 icon: const Icon(Icons.audio_file),
                 tooltip: '选择单首歌曲',
-                onPressed: () async {
-                  await _local.pickSingleSong();
-                },
+                onPressed: () => _runLocalImport(_local.pickSingleSong),
               ),
               IconButton(
                 icon: Icon(_isAndroid ? Icons.library_music : Icons.folder_open),
                 tooltip: _isAndroid ? '批量选择音频文件' : '选择文件夹并扫描',
-                onPressed: () async {
-                  await _local.pickAndScanFolder();
-                },
+                onPressed: () => _runLocalImport(_local.pickAndScanFolder),
               ),
               if (_local.tracks.isNotEmpty)
                 IconButton(
@@ -310,16 +319,12 @@ class _LocalPageState extends State<LocalPage> {
                 const Spacer(),
                 fluent.IconButton(
                   icon: const Icon(fluent.FluentIcons.music_in_collection),
-                  onPressed: () async {
-                    await _local.pickSingleSong();
-                  },
+                  onPressed: () => _runLocalImport(_local.pickSingleSong),
                 ),
                 const SizedBox(width: 6),
                 fluent.IconButton(
                   icon: const Icon(fluent.FluentIcons.folder_open),
-                  onPressed: () async {
-                    await _local.pickAndScanFolder();
-                  },
+                  onPressed: () => _runLocalImport(_local.pickAndScanFolder),
                 ),
                 if (tracks.isNotEmpty) ...[
                   const SizedBox(width: 6),
@@ -411,16 +416,12 @@ class _LocalPageState extends State<LocalPage> {
               CupertinoButton(
                 padding: EdgeInsets.zero,
                 child: const Icon(CupertinoIcons.music_note, size: 22),
-                onPressed: () async {
-                  await _local.pickSingleSong();
-                },
+                onPressed: () => _runLocalImport(_local.pickSingleSong),
               ),
               CupertinoButton(
                 padding: EdgeInsets.zero,
                 child: const Icon(CupertinoIcons.music_albums, size: 22),
-                onPressed: () async {
-                  await _local.pickAndScanFolder();
-                },
+                onPressed: () => _runLocalImport(_local.pickAndScanFolder),
               ),
               if (tracks.isNotEmpty)
                 CupertinoButton(
