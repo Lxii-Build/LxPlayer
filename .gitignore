@@ -47,3 +47,6 @@ server/*.db
 server/data/
 
 .superpowers/
+
+# 工作区数据（会话记忆、分析产物），不入库
+.workbuddy/
