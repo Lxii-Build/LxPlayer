@@ -1,17 +1,57 @@
+# Flutter / Dart
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/.packages
+app/ios/Pods/
+app/ios/.symlinks/
+app/macos/Pods/
+app/linux/flutter/ephemeral/
+app/windows/flutter/ephemeral/
+app/macos/Flutter/ephemeral/
+app/ios/Flutter/ephemeral/
+
+# 本地 Flutter 工具链产物：pub 缓存体积可达数百 MB，工具状态是机器相关的临时文件。
+# 一旦入库会让仓库膨胀且每次构建设置都有差异，务必保持忽略。
+/.pubcache/
+app/.flutter_tool_state
+
+# 签名：注入的密钥库与口令不入库。
+# app/android/keys/lxplayer-release.p12 是故意提交的——CI runner 每次都是新机器，
+# 自动生成的 debug keystore 会让每次构建指纹都不同，装不上也覆盖不了。
+app/android/key.properties
+app/android/keys/injected.p12
+app/android/.gradle/
+*.jks
+
+# 通用
 .gradle/
 build/
 local.properties
 .idea/
 *.iml
+.vscode/
 captures/
 .externalNativeBuild/
 .cxx/
 *.apk
 *.aab
-.superpowers/
-android/app/screenshots/
+
+# 盯 CI 时留下的临时文件（构建日志、run/job 接口快照）
+.ci.log
+.jid
+.jobs.json
+.runs.json
+.run*.json
+.runid
 
 # Go
 server/lxplayer-server
 server/*.db
 server/data/
+
+.superpowers/
+
+# 工作区数据（会话记忆、分析产物），不入库
+.workbuddy/
