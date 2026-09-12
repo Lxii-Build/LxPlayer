@@ -98,6 +98,22 @@ android {
         release {
             signingConfig = signingConfigs.getByName("unified")
             manifestPlaceholders["appName"] = "LxPlayer"
+
+            // release 只打 ARM 两个 ABI。
+            //
+            // x86_64 是**模拟器专用**架构，真实 Android 设备全是 ARM；而 APK 里
+            // x86_64 那部分（libapp.so / libflutter.so / libmpv.so / libbarhopper.so）
+            // 永远不会被真机加载。实测该目录一度占 48.0MiB。
+            //
+            // 注意这里必须配合 android/gradle.properties 里的 disable-abi-filtering=true：
+            // 否则 Flutter 插件会把 defaultConfig 的 abiFilters 清空重设，把 x86_64 加回来。
+            // 也正因为那个开关，debug 变体不受影响、仍保留全 ABI，x86_64 模拟器照常调试。
+            //
+            // 保留 armeabi-v7a 是兼容性取舍：它覆盖老旧 32 位设备。
+            ndk {
+                abiFilters.clear()
+                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
+            }
         }
     }
 }

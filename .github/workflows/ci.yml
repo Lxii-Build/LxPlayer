@@ -140,7 +140,7 @@ jobs:
               END { for (k in sz) printf "%-16s %10d B  %6.1f MiB\n", k, sz[k], sz[k]/1048576 }
             ' | sort -k2 -n -r
             echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: 校验 debug 与 release 签名指纹一致
         run: |
