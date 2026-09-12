@@ -12,6 +12,11 @@ app/windows/flutter/ephemeral/
 app/macos/Flutter/ephemeral/
 app/ios/Flutter/ephemeral/
 
+# 本地 Flutter 工具链产物：pub 缓存体积可达数百 MB，工具状态是机器相关的临时文件。
+# 一旦入库会让仓库膨胀且每次构建设置都有差异，务必保持忽略。
+/.pubcache/
+app/.flutter_tool_state
+
 # 签名：注入的密钥库与口令不入库。
 # app/android/keys/lxplayer-release.p12 是故意提交的——CI runner 每次都是新机器，
 # 自动生成的 debug keystore 会让每次构建指纹都不同，装不上也覆盖不了。
