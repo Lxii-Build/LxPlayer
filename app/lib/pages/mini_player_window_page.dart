@@ -367,60 +367,26 @@ class _MiniPlayerWindowPageState extends State<MiniPlayerWindowPage>
             maxHeight: (size.height * 0.9).clamp(260.0, 720.0),
           ),
           title: Text(queue.isEmpty ? '播放队列' : '播放队列 (${queue.length})'),
-          content: SizedBox(
+          // 内容区抽成独立 widget（MiniPlayerQueueDialogBody）以便单测，见 ux-audit A6。
+          content: MiniPlayerQueueDialogBody(
+            queue: queue,
+            currentIndex: currentIndex,
             width: contentWidth,
             height: contentHeight,
-            child: queue.isEmpty
-                ? const Text('无播放队列')
-                : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: queue.length,
-                    itemBuilder: (context, index) {
-                      final Track t = queue[index];
-                      final bool isCurrent = index == currentIndex;
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: isCurrent ? theme.resources.controlFillColorSecondary : null,
-                          border: Border(
-                            bottom: BorderSide(
-                              color: theme.resources.dividerStrokeColorDefault,
-                              width: 0.6,
-                            ),
-                          ),
-                        ),
-                        child: fluent.ListTile(
-                          title: Text(
-                            t.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
-                            ),
-                          ),
-                          subtitle: Text(
-                            t.artists,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          trailing: isCurrent
-                              ? const Icon(Icons.equalizer_rounded, size: 18)
-                              : null,
-                          onPressed: () async {
-                            final coverProvider = queueService.getCoverProvider(t);
-                            queueService.playTrack(t);
-                            await player.playTrack(
-                              t,
-                              coverProvider: coverProvider,
-                              fromPlaylist: queueService.source == QueueSource.playlist,
-                            );
-                            if (context.mounted) {
-                              Navigator.of(context).pop();
-                            }
-                          },
-                        ),
-                      );
-                    },
-                  ),
+            currentColor: theme.resources.controlFillColorSecondary,
+            dividerColor: theme.resources.dividerStrokeColorDefault,
+            onTrackTap: (t) async {
+              final coverProvider = queueService.getCoverProvider(t);
+              queueService.playTrack(t);
+              await player.playTrack(
+                t,
+                coverProvider: coverProvider,
+                fromPlaylist: queueService.source == QueueSource.playlist,
+              );
+              if (context.mounted) {
+                Navigator.of(context).pop();
+              }
+            },
           ),
           actions: [
             fluent.FilledButton(
@@ -845,10 +811,10 @@ class _MiniPlayerWindowPageState extends State<MiniPlayerWindowPage>
           onPressed: () => _showVolumeDialog(player),
           size: 20,
         )),
-        // 更多按钮
+        // 更多按钮（打开播放队列，见 ux-audit A6）
         _controlSlot(MiniPlayerControlButton(
           icon: Icons.more_horiz_rounded,
-          onPressed: () {},
+          onPressed: () => _showQueueDialog(player),
           size: 20,
         )),
         // 上一首
@@ -937,6 +903,94 @@ class MiniPlayerControlButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 播放队列弹窗的内容区。
+///
+/// 从 `_MiniPlayerWindowPageState._showQueueDialog` 内联 builder 中抽出，行为与
+/// 抽出前逐像素一致（同样的 `SizedBox` 约束、同样的 `fluent.ListTile`、同样的当前项
+/// 高亮与分隔线）。抽成独立 widget 的唯一目的是让它能被单元测试直接构建并断言
+/// 「队列内容确实渲染」，见 `test/ux_audit_fixes_test.dart` 的 A6 用例（ux-audit A6）。
+///
+/// 颜色由调用方注入（`currentColor` / `dividerColor`），使本 widget 不依赖
+/// `FluentTheme` 祖先，便于在测试里用最轻的宿主构建。
+class MiniPlayerQueueDialogBody extends StatelessWidget {
+  const MiniPlayerQueueDialogBody({
+    super.key,
+    required this.queue,
+    required this.currentIndex,
+    required this.width,
+    required this.height,
+    required this.currentColor,
+    required this.dividerColor,
+    required this.onTrackTap,
+  });
+
+  /// 当前播放队列。
+  final List<Track> queue;
+
+  /// 当前曲目在 [queue] 中的下标；无当前项时传 -1。
+  final int currentIndex;
+
+  /// 内容区宽度（由弹窗按窗口尺寸算出）。
+  final double width;
+
+  /// 内容区高度（由弹窗按窗口尺寸算出）。
+  final double height;
+
+  /// 当前项的高亮底色。
+  final Color currentColor;
+
+  /// 行底部分隔线颜色。
+  final Color dividerColor;
+
+  /// 点击某一行时回调（由弹窗负责切歌并关闭弹窗）。
+  final ValueChanged<Track> onTrackTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: queue.isEmpty
+          ? const Text('无播放队列')
+          : ListView.builder(
+              shrinkWrap: true,
+              itemCount: queue.length,
+              itemBuilder: (context, index) {
+                final Track t = queue[index];
+                final bool isCurrent = index == currentIndex;
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isCurrent ? currentColor : null,
+                    border: Border(
+                      bottom: BorderSide(color: dividerColor, width: 0.6),
+                    ),
+                  ),
+                  child: fluent.ListTile(
+                    title: Text(
+                      t.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                    ),
+                    subtitle: Text(
+                      t.artists,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: isCurrent
+                        ? const Icon(Icons.equalizer_rounded, size: 18)
+                        : null,
+                    onPressed: () => onTrackTap(t),
+                  ),
+                );
+              },
+            ),
     );
   }
 }

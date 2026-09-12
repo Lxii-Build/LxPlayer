@@ -1,5 +1,7 @@
+import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lxplayer/models/track.dart';
 import 'package:lxplayer/pages/home_page/mobile_personal_fm.dart';
 import 'package:lxplayer/pages/home_page/newsong_cards.dart';
 import 'package:lxplayer/pages/mini_player_window_page.dart';
@@ -11,7 +13,8 @@ import 'package:lxplayer/widgets/lx_image_fallback.dart';
 ///   - A1：图片失败兜底组件的渲染；
 ///   - A2：卡片底色取自主题（`surfaceContainerHigh`）；
 ///   - A4：私人 FM 信息列在大字号下不溢出、正常字号高度不变；
-///   - A5：迷你播放器控制按钮的触控目标 ≥44×44。
+///   - A5：迷你播放器控制按钮的触控目标 ≥44×44；
+///   - A6：播放队列弹窗内容区（`MiniPlayerQueueDialogBody`）渲染真实队列。
 ///
 /// A3（写死浅灰占位改主题色）落在 `CachedNetworkImage` 的 placeholder 里，其宿主
 /// 页面还要走 `netease_recommend_service` 拉数据，纯 widget 测试里拿不到——
@@ -172,6 +175,79 @@ void main() {
       final Size size = tester.getSize(find.byType(MiniPlayerControlButton));
       expect(size.width, greaterThanOrEqualTo(44));
       expect(size.height, greaterThanOrEqualTo(44));
+    });
+  });
+
+  group('A6 播放队列弹窗内容区', () {
+    // 「更多」按钮原本 onPressed 为空；`_showQueueDialog` 是完整实现却从未被引用。
+    // 该弹窗是本 `State` 的私有方法、且依赖 `PlayerService` + `window_manager`，
+    // 单测里无法直接调用。因此把内容区抽成独立 widget 直接构建、断言它确实渲染出
+    // 队列内容——这比只断言「不抛异常」更强。
+    List<Track> fixture() => <Track>[
+          Track(id: '1', name: '歌曲甲', artists: '歌手A', album: '', picUrl: ''),
+          Track(id: '2', name: '歌曲乙', artists: '歌手B', album: '', picUrl: ''),
+        ];
+
+    Future<void> pumpBody(
+      WidgetTester tester, {
+      required List<Track> queue,
+      required int currentIndex,
+      ValueChanged<Track>? onTrackTap,
+    }) async {
+      await tester.pumpWidget(fluent.FluentApp(
+        home: Center(
+          child: MiniPlayerQueueDialogBody(
+            queue: queue,
+            currentIndex: currentIndex,
+            width: 360,
+            height: 400,
+            currentColor: Colors.blue,
+            dividerColor: Colors.grey,
+            onTrackTap: onTrackTap ?? (_) {},
+          ),
+        ),
+      ));
+    }
+
+    testWidgets('渲染队列里的每首歌（歌名 + 歌手）', (WidgetTester tester) async {
+      await pumpBody(tester, queue: fixture(), currentIndex: 0);
+
+      expect(find.text('歌曲甲'), findsOneWidget);
+      expect(find.text('歌曲乙'), findsOneWidget);
+      expect(find.text('歌手A'), findsOneWidget);
+      expect(find.text('歌手B'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('当前播放项高亮：仅它带等高线图标', (WidgetTester tester) async {
+      await pumpBody(tester, queue: fixture(), currentIndex: 1);
+
+      expect(find.byIcon(Icons.equalizer_rounded), findsOneWidget);
+    });
+
+    testWidgets('点击某一行回调携带对应 Track', (WidgetTester tester) async {
+      Track? tapped;
+      await pumpBody(
+        tester,
+        queue: fixture(),
+        currentIndex: 0,
+        onTrackTap: (t) => tapped = t,
+      );
+
+      await tester.tap(find.text('歌曲乙'));
+      // fluent 的 HoverButton 在点击后会留一个 ~100ms 的悬停定时器；pump 足够时长
+      // 让它落地，否则测试结束时会因残留 pending timer 触发断言。
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(tapped, isNotNull);
+      expect(tapped!.name, '歌曲乙');
+    });
+
+    testWidgets('空队列显示占位文案且不抛异常', (WidgetTester tester) async {
+      await pumpBody(tester, queue: const <Track>[], currentIndex: -1);
+
+      expect(find.text('无播放队列'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
   });
 }
