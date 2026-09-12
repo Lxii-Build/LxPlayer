@@ -93,11 +93,54 @@ jobs:
       - name: 单元测试
         run: flutter test --reporter expanded
 
+      # release 只打 ARM 两个 ABI。
+      #
+      # 为什么去掉 x86_64：它是**模拟器专用**架构，真实 Android 设备（手机/平板/电视）
+      # 全部是 ARM。实测 release APK 里 lib/x86_64 一个目录就占 50.3MB
+      # （libapp.so + libflutter.so + libmpv.so + libbarhopper 各一份），
+      # 对真机用户是纯粹的体积浪费——这部分永远不会被加载。
+      #
+      # 为什么不连带去掉 armeabi-v7a：它覆盖老旧的 32 位设备，属产品兼容性取舍，
+      # 不在这里单方面决定。
+      #
+      # debug 保持全 ABI（含 x86_64），否则 x86_64 模拟器上没法调试。
       - name: 构建 release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --target-platform android-arm,android-arm64
 
       - name: 构建 debug APK
         run: flutter build apk --debug
+
+      - name: 报告 APK 体积构成
+        run: |
+          set -euo pipefail
+          RELEASE_APK=build/app/outputs/flutter-apk/app-release.apk
+          DEBUG_APK=build/app/outputs/flutter-apk/app-debug.apk
+          {
+            echo "## APK 体积"
+            echo ""
+            echo "| 变体 | 字节 | MiB |"
+            echo "| --- | --- | --- |"
+            for pair in "release:$RELEASE_APK" "debug:$DEBUG_APK"; do
+              name=${pair%%:*}
+              path=${pair#*:}
+              if [ -f "$path" ]; then
+                bytes=$(stat -c%s "$path")
+                mib=$(awk -v b="$bytes" 'BEGIN{printf "%.1f", b/1048576}')
+                echo "| $name | $bytes | $mib |"
+              else
+                echo "| $name | 缺失 | - |"
+              fi
+            done
+            echo ""
+            echo "### release 包内各 ABI 占用"
+            echo ""
+            echo '```'
+            unzip -l "$RELEASE_APK" 2>/dev/null | awk '
+              $4 ~ /^lib\// { n=split($4,a,"/"); sz[a[2]]+=$1 }
+              END { for (k in sz) printf "%-16s %10d B  %6.1f MiB\n", k, sz[k], sz[k]/1048576 }
+            ' | sort -k2 -n -r
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: 校验 debug 与 release 签名指纹一致
         run: |
