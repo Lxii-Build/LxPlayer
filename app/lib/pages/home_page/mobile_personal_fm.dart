@@ -50,11 +50,9 @@ class MobilePersonalFm extends StatelessWidget {
         final isFmQueue = _isSameQueueAs(fmTracks);
         final isFmPlaying = PlayerService().isPlaying && (isFmCurrent || isFmQueue);
 
-        // Common click handler to jump to player
-        final void Function() onOpenPlayer = () {
-            // PlayerService handles navigation to full screen usually via a global state or callback
-            // For now we just implement the play logic as required by the card
-        };
+        // 整卡可点：打开全屏播放器。入口与迷你播放器一致（`mini_player.dart` 的
+        // `_openFullPlayer`），修掉此前「整卡有水波纹却点了没反应」的死点击。
+        final void Function() onOpenPlayer = () => _openFullPlayer(context);
 
         // 表面（玻璃 / Fluent 卡 / 实心）由 LxSurface 统一决定，这里只决定内容形态：
         // Fluent 与 Cupertino 沿用紧凑行（含各自的控件样式），其余走 Material 表现力布局。
@@ -83,6 +81,36 @@ class MobilePersonalFm extends StatelessWidget {
 
   /// 与首页推荐卡（`swipe_recommend_card.dart`）一致的统一圆角。
   static const double _surfaceRadius = 28;
+
+  /// 打开全屏播放器。
+  ///
+  /// 转场与迷你播放器 `_openFullPlayer` 逐字一致（同一套 `PageRouteBuilder`），
+  /// 避免两处入口手感不同。
+  void _openFullPlayer(BuildContext context) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        maintainState: true,
+        pageBuilder: (context, animation, secondaryAnimation) => const PlayerPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0);
+          const end = Offset.zero;
+          const curve = Curves.easeOutCubic;
+
+          final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          final offsetAnimation = animation.drive(tween);
+
+          return SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+      ),
+    );
+  }
 
   /// 这里的样式代码主要是为了兼容旧版和其他主题
   Widget _buildOldCardContent(

@@ -67,6 +67,16 @@ class _NeteaseLibraryAlbumsPageState extends State<NeteaseLibraryAlbumsPage> {
     );
   }
 
+  /// 打开专辑详情。目的地 [AlbumDetailPage] 已存在，因此把原先的 TODO 空实现接上。
+  void _openAlbumDetail(BuildContext context, Map<String, dynamic> album) {
+    final albumId = int.tryParse(album['id']?.toString() ?? '');
+    if (albumId == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AlbumDetailPage(albumId: albumId)),
+    );
+  }
+
   Widget _buildMaterialBody(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
     if (_error != null) return Center(child: Text('加载失败: $_error'));
@@ -84,9 +94,8 @@ class _NeteaseLibraryAlbumsPageState extends State<NeteaseLibraryAlbumsPage> {
       itemBuilder: (context, index) {
         final album = _albums![index];
         return InkWell(
-          onTap: () {
-            // TODO: Navigate to album detail
-          },
+          // 目的地 AlbumDetailPage 已存在，接上跳转（原为 TODO 空实现，可点无反应）。
+          onTap: () => _openAlbumDetail(context, album),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -156,9 +165,8 @@ class _NeteaseLibraryAlbumsPageState extends State<NeteaseLibraryAlbumsPage> {
                           final album = _albums![index];
                           return CupertinoButton(
                             padding: EdgeInsets.zero,
-                            onPressed: () {
-                              // TODO: Navigate to album detail
-                            },
+                            // 与 Material 分支行为一致：接上专辑详情跳转。
+                            onPressed: () => _openAlbumDetail(context, album),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -169,6 +177,7 @@ class _NeteaseLibraryAlbumsPageState extends State<NeteaseLibraryAlbumsPage> {
                                       imageUrl: album['picUrl'] ?? '',
                                       fit: BoxFit.cover,
                                       width: double.infinity,
+                                      errorWidget: (context, url, error) => const LxImageFallback(),
                                     ),
                                   ),
                                 ),
@@ -177,7 +186,6 @@ class _NeteaseLibraryAlbumsPageState extends State<NeteaseLibraryAlbumsPage> {
                                   album['name'] ?? '',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                      errorWidget: (context, url, error) => const LxImageFallback(),
                                   style: TextStyle(
                                     color: isDark ? CupertinoColors.white : CupertinoColors.black,
                                     fontWeight: FontWeight.w600,

@@ -6,10 +6,11 @@ import '../../models/toplist.dart';
 import '../../services/music_service.dart';
 import '../../services/play_history_service.dart';
 import '../../services/player_service.dart';
+import '../../utils/page_visibility_notifier.dart';
 import '../../utils/theme_manager.dart';
 import '../skeleton_loader.dart';
-
 import '../lx_image_fallback.dart';
+
 /// iOS 风格的分段控制器（替代胶囊 Tabs）
 /// 采用轻量纯文字样式，更符合 iOS 原生设计
 class CupertinoHomeSegmentedControl extends StatelessWidget {
@@ -425,9 +426,9 @@ class CupertinoHistorySection extends StatelessWidget {
       ),
       child: CupertinoButton(
         padding: EdgeInsets.zero,
-        onPressed: () {
-          // TODO: 跳转到历史记录页面
-        },
+        // 与 Material 版 HistorySection 一致：切到主框架的历史页 Tab
+        // （`main_layout.dart` 里 `_pages[2] == HistoryPage`）。
+        onPressed: () => PageVisibilityNotifier().setCurrentPage(2),
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Column(
@@ -475,8 +476,8 @@ class CupertinoHistorySection extends StatelessWidget {
                         color: CupertinoColors.systemGrey6,
                         child: const CupertinoActivityIndicator(),
                       ),
-                    ),
                       errorWidget: (context, url, error) => const LxImageFallback(),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -606,8 +607,8 @@ class CupertinoGuessYouLikeSection extends StatelessWidget {
                 width: 60,
                 height: 60,
                 fit: BoxFit.cover,
-              ),
                 errorWidget: (context, url, error) => const LxImageFallback(),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(

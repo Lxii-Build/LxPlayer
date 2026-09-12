@@ -664,8 +664,7 @@ class GuessYouLikeSection extends StatelessWidget {
           children: [
             InkWell(
               onTap: () {
-                // TODO: 跳转到推荐页面
-                print('跳转到推荐页面');
+                // TODO: 跳转到推荐页面（暂无对应页面，见审计报告 B4；调试 print 已移除）
               },
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
@@ -713,7 +712,7 @@ class GuessYouLikeSection extends StatelessWidget {
       type: MaterialType.transparency,
       child: InkWell(
         onTap: () {
-          print('跳转到推荐页面');
+          // TODO: 跳转到推荐页面（暂无对应页面，见审计报告 B4；调试 print 已移除）
         },
         child: Padding(
           padding: const EdgeInsets.all(12.0),
@@ -778,8 +777,7 @@ class GuessYouLikeSection extends StatelessWidget {
             // 大封面
             InkWell(
               onTap: () {
-                 // TODO: 跳转到推荐页面
-                 print('跳转到推荐页面');
+                 // TODO: 跳转到推荐页面（暂无对应页面，见审计报告 B4；调试 print 已移除）
               },
               borderRadius: BorderRadius.circular(16),
               child: Hero(
@@ -801,9 +799,9 @@ class GuessYouLikeSection extends StatelessWidget {
                       imageUrl: sampleTracks.first.picUrl,
                       httpHeaders: getImageHeaders(sampleTracks.first.picUrl),
                       width: 88,
-                      errorWidget: (context, url, error) => const LxImageFallback(),
                       height: 88,
                       fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => const LxImageFallback(),
                     ),
                   ),
                 ),
@@ -902,9 +900,9 @@ class GuessYouLikeSection extends StatelessWidget {
                 imageUrl: sampleTracks.first.picUrl,
                 httpHeaders: getImageHeaders(sampleTracks.first.picUrl),
                 width: 64,
-                errorWidget: (context, url, error) => const LxImageFallback(),
                 height: 64,
                 fit: BoxFit.cover,
+                errorWidget: (context, url, error) => const LxImageFallback(),
               ),
             ),
             const SizedBox(width: 12),
@@ -948,7 +946,7 @@ class GuessYouLikeSection extends StatelessWidget {
     if (isLegacy) {
       return InkWell(
         onTap: () {
-          print('引导用户导入歌单');
+          // TODO: 引导用户导入歌单（暂无对应页面，见审计报告 B4；调试 print 已移除）
         },
         child: Center(
           child: Padding(
@@ -968,7 +966,7 @@ class GuessYouLikeSection extends StatelessWidget {
     // Expressive 风格
     return InkWell(
       onTap: () {
-        print('引导用户导入歌单');
+        // TODO: 引导用户导入歌单（暂无对应页面，见审计报告 B4；调试 print 已移除）
       },
       child: Container(
         height: 88,

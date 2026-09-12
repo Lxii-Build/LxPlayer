@@ -1,12 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import '../../services/player_service.dart';
+import '../../services/playlist_queue_service.dart';
 import '../../utils/theme_manager.dart';
 import '../../widgets/lx_surface.dart';
-
-/// 新歌列表（移动端）
 import '../../widgets/lx_image_fallback.dart';
 import 'hero_section.dart'; // 复用 convertToTrack 函数
+
+/// 新歌列表（移动端）
 class MobileNewsongList extends StatelessWidget {
   final List<Map<String, dynamic>> list;
   const MobileNewsongList({super.key, required this.list});
@@ -52,9 +54,7 @@ class MobileNewsongList extends StatelessWidget {
         final artists = ar.map((e) => (e as Map<String, dynamic>)['name']?.toString() ?? '').where((e) => e.isNotEmpty).join('/');
         return CupertinoButton(
           padding: EdgeInsets.zero,
-          onPressed: () {
-            // TODO: Play this song
-          },
+          onPressed: () => _playSong(song),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
@@ -120,11 +120,23 @@ class MobileNewsongList extends StatelessWidget {
         final pic = (al['picUrl'] ?? '').toString();
         final artists = ar.map((e) => (e as Map<String, dynamic>)['name']?.toString() ?? '').where((e) => e.isNotEmpty).join('/');
         return ListTile(
-          leading: ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.network(pic, width: 48, height: 48, fit: BoxFit.cover)),
+          onTap: () => _playSong(song),
+          leading: ClipRRect(borderRadius: BorderRadius.circular(6), child: Image.network(pic, width: 48, height: 48, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const LxImageFallback(),)),
           title: Text(song['name']?.toString() ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: Text(artists, maxLines: 1, overflow: TextOverflow.ellipsis),
         );
       },
     );
+  }
+
+  /// 播放单曲。
+  ///
+  /// 与桌面版新歌卡片（`newsong_cards.dart` 的 `NewsongCard`）保持同一套行为：
+  /// 用 `convertToTrack` 把接口返回的原始 map 构造成 `Track`，设为队列后再播放。
+  /// 此前 Cupertino 分支是 `// TODO`、Material 分支整行不可点，点了没反应。
+  Future<void> _playSong(Map<String, dynamic> song) async {
+    final track = convertToTrack(song);
+    PlaylistQueueService().setQueue([track], 0, QueueSource.search);
+    await PlayerService().playTrack(track);
   }
 }
