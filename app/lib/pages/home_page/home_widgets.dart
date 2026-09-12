@@ -9,6 +9,7 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter/material.dart';
 import '../../utils/page_visibility_notifier.dart';
 import '../../utils/theme_manager.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 /// 首页顶部胶囊 Tabs
 class HomeCapsuleTabs extends StatelessWidget {
@@ -471,6 +472,7 @@ class HistorySection extends StatelessWidget {
                             width: 88,
                             height: 88,
                             fit: BoxFit.cover,
+                            errorWidget: (context, url, error) => const LxImageFallback(),
                           ),
                         ),
                       ),
@@ -579,6 +581,7 @@ class HistorySection extends StatelessWidget {
                       width: 64,
                       height: 64,
                       fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => const LxImageFallback(),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -798,6 +801,7 @@ class GuessYouLikeSection extends StatelessWidget {
                       imageUrl: sampleTracks.first.picUrl,
                       httpHeaders: getImageHeaders(sampleTracks.first.picUrl),
                       width: 88,
+                      errorWidget: (context, url, error) => const LxImageFallback(),
                       height: 88,
                       fit: BoxFit.cover,
                     ),
@@ -898,6 +902,7 @@ class GuessYouLikeSection extends StatelessWidget {
                 imageUrl: sampleTracks.first.picUrl,
                 httpHeaders: getImageHeaders(sampleTracks.first.picUrl),
                 width: 64,
+                errorWidget: (context, url, error) => const LxImageFallback(),
                 height: 64,
                 fit: BoxFit.cover,
               ),

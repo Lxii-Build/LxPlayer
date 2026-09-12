@@ -5,6 +5,7 @@ import '../../services/player_service.dart';
 import '../../services/playlist_queue_service.dart';
 import '../../services/netease_artist_service.dart';
 import '../../models/track.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 /// 流体云专用播放队列面板
 /// 对标 Apple Music 设计：无边框、半透明、大封面、沉浸式体验
@@ -314,6 +315,7 @@ class _PlayerFluidCloudQueuePanelState extends State<PlayerFluidCloudQueuePanel>
                       fit: BoxFit.cover,
                       fadeOutDuration: Duration.zero,
                       fadeInDuration: const Duration(milliseconds: 200),
+                      errorWidget: (context, url, error) => const LxImageFallback(),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -409,6 +411,7 @@ class _PlayerFluidCloudQueuePanelState extends State<PlayerFluidCloudQueuePanel>
                         height: 40,
                         color: Colors.white.withOpacity(0.1),
                       ),
+                      errorWidget: (context, url, error) => const LxImageFallback(),
                     ),
                   ),
                   const SizedBox(width: 12),

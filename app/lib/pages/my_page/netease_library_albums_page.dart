@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/netease_recommend_service.dart';
 import '../../utils/theme_manager.dart';
+import '../../widgets/lx_image_fallback.dart';
+import '../album_detail_page.dart';
 
 class NeteaseLibraryAlbumsPage extends StatefulWidget {
   const NeteaseLibraryAlbumsPage({super.key});
@@ -95,7 +97,12 @@ class _NeteaseLibraryAlbumsPageState extends State<NeteaseLibraryAlbumsPage> {
                     imageUrl: album['picUrl'] ?? album['picUrl'] ?? '',
                     fit: BoxFit.cover,
                     width: double.infinity,
-                    placeholder: (context, url) => Container(color: Colors.grey[300]),
+                    // 占位色随主题（原写死 Colors.grey[300] 在深色下会突兀发白）。
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[
+                          Theme.of(context).brightness == Brightness.dark ? 800 : 200],
+                    ),
+                    errorWidget: (context, url, error) => const LxImageFallback(),
                   ),
                 ),
               ),
@@ -170,6 +177,7 @@ class _NeteaseLibraryAlbumsPageState extends State<NeteaseLibraryAlbumsPage> {
                                   album['name'] ?? '',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
+                                      errorWidget: (context, url, error) => const LxImageFallback(),
                                   style: TextStyle(
                                     color: isDark ? CupertinoColors.white : CupertinoColors.black,
                                     fontWeight: FontWeight.w600,

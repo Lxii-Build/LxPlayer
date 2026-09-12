@@ -13,6 +13,7 @@ import '../../pages/my_page/netease_library_playlists_page.dart';
 import '../../pages/my_page/netease_library_albums_page.dart';
 import '../../pages/my_page/netease_library_artists_page.dart';
 import '../../pages/my_page/netease_library_djs_page.dart';
+import '../lx_image_fallback.dart';
 
 /// Oculus 风格的首页标签切换组件
 class OculusHomeTabs extends StatelessWidget {
@@ -435,6 +436,7 @@ class _OculusHeroCard extends StatelessWidget {
                                 width: 120,
                                 height: 120,
                                 fit: BoxFit.cover,
+                                errorWidget: (context, url, error) => const LxImageFallback(),
                               ),
                             ),
                           )).toList(),
@@ -884,6 +886,7 @@ class OculusNewSongsWidget extends StatelessWidget {
                             CachedNetworkImage(
                               imageUrl: pic,
                               fit: BoxFit.cover,
+                              errorWidget: (context, url, error) => const LxImageFallback(),
                             ),
                           // 播放按钮遮罩
                           Positioned(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/image_utils.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 /// Bento 网格歌单 - 1大+4小布局
 class BentoPlaylistGrid extends StatelessWidget {
@@ -118,6 +119,7 @@ class _LargePlaylistCardState extends State<LargePlaylistCard> {
                     imageUrl: pic,
                     httpHeaders: getImageHeaders(pic),
                     fit: BoxFit.cover,
+                    errorWidget: (context, url, error) => const LxImageFallback(),
                   ),
                 ),
                 // 渐变遮罩
@@ -206,6 +208,7 @@ class _SmallPlaylistCardState extends State<SmallPlaylistCard> {
                     imageUrl: pic,
                     httpHeaders: getImageHeaders(pic),
                     fit: BoxFit.cover,
+                    errorWidget: (context, url, error) => const LxImageFallback(),
                   ),
                 ),
                 Container(

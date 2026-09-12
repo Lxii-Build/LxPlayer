@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/netease_recommend_service.dart';
 import '../../utils/theme_manager.dart';
 import '../artist_detail_page.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 class NeteaseLibraryArtistsPage extends StatefulWidget {
   const NeteaseLibraryArtistsPage({super.key});
@@ -213,6 +214,7 @@ class _NeteaseLibraryArtistsPageState extends State<NeteaseLibraryArtistsPage> {
                 imageUrl: picUrl,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Container(color: Colors.grey[isDark ? 800 : 200]),
+                errorWidget: (context, url, error) => const LxImageFallback(),
               ),
             ),
             Positioned.fill(
@@ -303,6 +305,7 @@ class _NeteaseLibraryArtistsPageState extends State<NeteaseLibraryArtistsPage> {
             ? CachedNetworkImage(
                 imageUrl: url,
                 fit: BoxFit.cover,
+                errorWidget: (context, url, error) => const LxImageFallback(),
               )
             : const Icon(Icons.person, color: Colors.grey),
       ),

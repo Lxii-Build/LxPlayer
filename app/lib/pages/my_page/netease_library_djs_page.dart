@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/netease_recommend_service.dart';
 import '../../utils/theme_manager.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 class NeteaseLibraryDjsPage extends StatefulWidget {
   const NeteaseLibraryDjsPage({super.key});
@@ -83,7 +84,12 @@ class _NeteaseLibraryDjsPageState extends State<NeteaseLibraryDjsPage> {
               width: 56,
               height: 56,
               fit: BoxFit.cover,
-              placeholder: (context, url) => Container(color: Colors.grey[300]),
+              // 占位色随主题（原写死 Colors.grey[300] 在深色下会突兀发白）。
+              placeholder: (context, url) => Container(
+                color: Colors.grey[
+                    Theme.of(context).brightness == Brightness.dark ? 800 : 200],
+              ),
+              errorWidget: (context, url, error) => const LxImageFallback(),
             ),
           ),
           title: Text(dj['name'] ?? ''),
@@ -132,6 +138,7 @@ class _NeteaseLibraryDjsPageState extends State<NeteaseLibraryDjsPage> {
                                     width: 60,
                                     height: 60,
                                     fit: BoxFit.cover,
+                                    errorWidget: (context, url, error) => const LxImageFallback(),
                                   ),
                                 ),
                                 const SizedBox(width: 12),

@@ -6,6 +6,7 @@ import '../../models/track.dart';
 import '../../services/player_service.dart';
 import '../../services/playlist_queue_service.dart';
 import '../../utils/theme_manager.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 /// 转换为 Track 对象
 Track convertToTrack(Map<String, dynamic> song) {
@@ -218,7 +219,7 @@ class _DailyRecommendHeroCardState extends State<DailyRecommendHeroCard> {
       itemBuilder: (context, i) {
         return ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: CachedNetworkImage(imageUrl: covers[i], httpHeaders: getImageHeaders(covers[i]), fit: BoxFit.cover),
+          child: CachedNetworkImage(imageUrl: covers[i], httpHeaders: getImageHeaders(covers[i]), fit: BoxFit.cover, errorWidget: (context, url, error) => const LxImageFallback(),),
         );
       },
     );
@@ -234,7 +235,6 @@ class PersonalFmCompactCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final themeManager = ThemeManager();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     
     if (list.isEmpty) return const SizedBox.shrink();
     
@@ -264,7 +264,8 @@ class PersonalFmCompactCard extends StatelessWidget {
           height: 220,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+            // 表面色交给主题（原写死 0xFF1E1E2E / Colors.white 与 LxSurface 实心分支不一致）。
+            color: cs.surfaceContainerHigh,
             boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 4))],
           ),
           child: ClipRRect(
@@ -276,7 +277,7 @@ class PersonalFmCompactCard extends StatelessWidget {
                   Positioned.fill(
                     child: Opacity(
                       opacity: 0.15,
-                      child: CachedNetworkImage(imageUrl: pic, httpHeaders: getImageHeaders(pic), fit: BoxFit.cover),
+                      child: CachedNetworkImage(imageUrl: pic, httpHeaders: getImageHeaders(pic), fit: BoxFit.cover, errorWidget: (context, url, error) => const LxImageFallback(),),
                     ),
                   ),
                 Padding(
@@ -301,7 +302,7 @@ class PersonalFmCompactCard extends StatelessWidget {
                               child: SizedBox(
                                 width: 100, height: 100,
                                 child: pic.isNotEmpty 
-                                    ? CachedNetworkImage(imageUrl: pic, httpHeaders: getImageHeaders(pic), fit: BoxFit.cover)
+                                    ? CachedNetworkImage(imageUrl: pic, httpHeaders: getImageHeaders(pic), fit: BoxFit.cover, errorWidget: (context, url, error) => const LxImageFallback(),)
                                     : Container(color: cs.surfaceContainerHighest, child: Icon(Icons.music_note, color: cs.onSurface.withOpacity(0.3))),
                               ),
                             ),

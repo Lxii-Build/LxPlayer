@@ -9,6 +9,7 @@ import '../../services/playlist_queue_service.dart';
 import '../../services/netease_discover_service.dart';
 import '../../models/track.dart';
 import '../../models/netease_discover.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 /// 移动端流体云歌曲信息面板
 /// 展示曲风、BPM、语种、回忆坐标、相似歌曲、歌手信息等
@@ -1138,6 +1139,7 @@ class _MobilePlayerFluidCloudSongWikiPanelState extends State<MobilePlayerFluidC
                   color: Colors.white.withOpacity(0.1),
                   child: Icon(Icons.queue_music, color: Colors.white.withOpacity(0.3), size: 36),
                 ),
+                errorWidget: (context, url, error) => const LxImageFallback(),
               ),
             ),
             const SizedBox(width: 14),
@@ -1240,6 +1242,7 @@ class _MobilePlayerFluidCloudSongWikiPanelState extends State<MobilePlayerFluidC
                   color: Colors.white.withOpacity(0.1),
                   child: Icon(Icons.music_note, color: Colors.white.withOpacity(0.3), size: 16),
                 ),
+                errorWidget: (context, url, error) => const LxImageFallback(),
               ),
             ),
             const SizedBox(width: 12),

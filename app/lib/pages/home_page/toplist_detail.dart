@@ -13,6 +13,7 @@ import 'package:lxplayer/services/auth_service.dart';
 import 'package:lxplayer/pages/auth/auth_page.dart';
 import 'package:flutter/material.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
+import '../../widgets/lx_image_fallback.dart';
 
 /// 显示榜单详情
 void showToplistDetail(BuildContext context, Toplist toplist) {
@@ -321,6 +322,7 @@ class _ToplistDetailContentFluent extends StatelessWidget {
                     imageUrl: toplist.coverImgUrl,
                     httpHeaders: getImageHeaders(toplist.coverImgUrl),
                     fit: BoxFit.cover,
+                    errorWidget: (context, url, error) => const LxImageFallback(),
                   ),
                 ),
               ),
@@ -480,6 +482,7 @@ class _FluentTrackListTileState extends State<_FluentTrackListTile> {
                height: 40,
                fit: BoxFit.cover,
                placeholder: (c, u) => Container(color: theme.resources.controlFillColorSecondary),
+               errorWidget: (context, url, error) => const LxImageFallback(),
              ),
            ),
            const SizedBox(width: 12),

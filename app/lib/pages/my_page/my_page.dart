@@ -22,6 +22,7 @@ import '../settings_page/user_card.dart';
 import 'my_page_breadcrumbs.dart';
 import '../../services/global_back_handler_service.dart';
 import '../listening_calendar_page.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 // UI 组件分离到 part 文件
 part 'my_page_material.dart';

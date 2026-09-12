@@ -14,6 +14,7 @@ import 'toplist_detail.dart';
 import '../../widgets/lx_surface.dart';
 import '../../widgets/oculus/oculus_home_widgets.dart';
 import '../../widgets/skeleton_loader.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 class ChartsTab extends StatelessWidget {
   final List<Track> cachedRandomTracks;
@@ -349,6 +350,7 @@ class _ToplistTrackCardState extends State<_ToplistTrackCard> {
                             imageUrl: widget.track.picUrl,
                             httpHeaders: getImageHeaders(widget.track.picUrl),
                             fit: BoxFit.cover,
+                            errorWidget: (context, url, error) => const LxImageFallback(),
                           ),
                         ),
                       ),

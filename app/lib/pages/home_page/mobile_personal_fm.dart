@@ -9,6 +9,8 @@ import '../../utils/image_utils.dart';
 import '../../widgets/lx_surface.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'hero_section.dart'; // 复用 convertToTrack 函数
+import '../../widgets/lx_image_fallback.dart';
+import '../player_page.dart'; // 整卡点击打开全屏播放器
 
 /// 私人FM（移动端）
 class MobilePersonalFm extends StatelessWidget {
@@ -101,7 +103,7 @@ class MobilePersonalFm extends StatelessWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: CachedNetworkImage(imageUrl: pic, httpHeaders: getImageHeaders(pic), width: 120, height: 120, fit: BoxFit.cover),
+            child: CachedNetworkImage(imageUrl: pic, httpHeaders: getImageHeaders(pic), width: 120, height: 120, fit: BoxFit.cover, errorWidget: (context, url, error) => const LxImageFallback(),),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -152,99 +154,22 @@ class MobilePersonalFm extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(24),
-              child: CachedNetworkImage(imageUrl: pic, httpHeaders: getImageHeaders(pic), width: 120, height: 120, fit: BoxFit.cover),
+              child: CachedNetworkImage(imageUrl: pic, httpHeaders: getImageHeaders(pic), width: 120, height: 120, fit: BoxFit.cover, errorWidget: (context, url, error) => const LxImageFallback(),),
             ),
           ),
           const SizedBox(width: 20),
-          // Info and Controls - Pushed to right
+          // 信息列（标题 / 艺人 / 右下角控件）。抽成 FmInfoColumn 以便脱离封面
+          // （CachedNetworkImage 依赖平台通道）单独做「大字号不溢出」的回归测试。
           Expanded(
-            child: SizedBox(
-              height: 120, // Increased to fix overflow (needs > 100 for bold text + 52dp btn)
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Text Content at the top
-                  Text(
-                    display['name']?.toString() ?? '', 
-                    maxLines: 1, 
-                    overflow: TextOverflow.ellipsis, 
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: cs.onSurface,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    artistsText, 
-                    maxLines: 1, 
-                    overflow: TextOverflow.ellipsis, 
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: cs.onSurface.withOpacity(0.6),
-                    ),
-                  ),
-                  const Spacer(),
-                  // Controls Cluster - Grouped in the bottom right
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      // Skip Button - Subtle Surface
-                      _buildMaterialControlBtn(
-                        onPressed: () => _handleSkipAction(fmTracks),
-                        icon: Icon(Icons.skip_next_rounded, color: cs.onSurface.withOpacity(0.8), size: 26),
-                        bgColor: cs.surfaceContainerHighest.withOpacity(0.5),
-                        size: 40,
-                      ),
-                      const SizedBox(width: 12),
-                      // Play Button - Primary Prominent
-                      _buildMaterialControlBtn(
-                        onPressed: () => _handlePlayAction(context, fmTracks, isFmPlaying, isFmQueue, isFmCurrent),
-                        icon: Icon(isFmPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: cs.onPrimary, size: 30),
-                        bgColor: cs.primary,
-                        size: 52,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+            child: FmInfoColumn(
+              title: display['name']?.toString() ?? '',
+              subtitle: artistsText,
+              isPlaying: isFmPlaying,
+              onSkip: () => _handleSkipAction(fmTracks),
+              onPlayPause: () => _handlePlayAction(context, fmTracks, isFmPlaying, isFmQueue, isFmCurrent),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildMaterialControlBtn({
-    required VoidCallback onPressed, 
-    required Widget icon, 
-    required Color bgColor,
-    double size = 48,
-  }) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(size / 3), // Dynamic rounded square
-        boxShadow: [
-          if (bgColor != Colors.transparent && bgColor != Colors.transparent.withOpacity(0.5))
-            BoxShadow(
-              color: bgColor.withOpacity(0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(size / 3),
-          child: Center(child: icon),
-        ),
       ),
     );
   }
@@ -344,5 +269,134 @@ class MobilePersonalFm extends StatelessWidget {
     final ct = PlayerService().currentTrack;
     if (ct == null) return false;
     return tracks.any((t) => t.id.toString() == ct.id.toString() && t.source == ct.source);
+  }
+}
+
+/// 私人 FM（Material 表现力风格）右侧信息列：标题 + 艺人 + 右下角播放/切歌控件。
+///
+/// 从 `MobilePersonalFm._buildMaterialFmContent` 里抽出来单独成一个组件，原因有二：
+///   1. 「容器高度随系统字号自适应」的逻辑有了唯一归属；
+///   2. 能脱离 `CachedNetworkImage`（它的 `DefaultCacheManager` 要走
+///      `path_provider` 平台通道，纯 widget 测试里拿不到）单独渲染，从而在大字号
+///      下断言不溢出。
+class FmInfoColumn extends StatelessWidget {
+  const FmInfoColumn({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.isPlaying,
+    required this.onSkip,
+    required this.onPlayPause,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool isPlaying;
+  final VoidCallback onSkip;
+  final VoidCallback onPlayPause;
+
+  /// 正常字号下的基准高度，与改造前的写死值（120）逐像素一致。
+  static const double baseHeight = 120;
+
+  /// 容器高度随系统字号放大，避免大字被固定高度压出 `RenderFlex overflowed`。
+  ///
+  /// 用标题字号（20）的实际缩放比推算，而不是 `scale(1.0)`——非线性字号缩放器
+  /// 下小字号的缩放比接近 1，拿它当基准会让容器几乎不增高、大字号仍会溢出。
+  ///
+  /// 下限锁在 [baseHeight]：正常字号（含系统「缩小字号」）下与改造前**完全一致**
+  /// （恒为 120），只有字号被放大时才按比例增高。
+  static double heightFor(TextScaler textScaler) {
+    final double factor = textScaler.scale(20) / 20;
+    return baseHeight * (factor < 1 ? 1 : factor);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: heightFor(MediaQuery.textScalerOf(context)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Text Content at the top
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: cs.onSurface,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: cs.onSurface.withOpacity(0.6),
+            ),
+          ),
+          const Spacer(),
+          // Controls Cluster - Grouped in the bottom right
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Skip Button - Subtle Surface
+              _buildControlBtn(
+                onPressed: onSkip,
+                icon: Icon(Icons.skip_next_rounded, color: cs.onSurface.withOpacity(0.8), size: 26),
+                bgColor: cs.surfaceContainerHighest.withOpacity(0.5),
+                size: 40,
+              ),
+              const SizedBox(width: 12),
+              // Play Button - Primary Prominent
+              _buildControlBtn(
+                onPressed: onPlayPause,
+                icon: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: cs.onPrimary, size: 30),
+                bgColor: cs.primary,
+                size: 52,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControlBtn({
+    required VoidCallback onPressed,
+    required Widget icon,
+    required Color bgColor,
+    double size = 48,
+  }) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(size / 3), // Dynamic rounded square
+        boxShadow: [
+          if (bgColor != Colors.transparent && bgColor != Colors.transparent.withOpacity(0.5))
+            BoxShadow(
+              color: bgColor.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(size / 3),
+          child: Center(child: icon),
+        ),
+      ),
+    );
   }
 }

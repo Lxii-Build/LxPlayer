@@ -4,6 +4,7 @@ import '../../utils/image_utils.dart';
 import '../../services/player_service.dart';
 import '../../services/playlist_queue_service.dart';
 import 'hero_section.dart'; // 复用 convertToTrack 函数
+import '../../widgets/lx_image_fallback.dart';
 
 /// 新歌卡片网格
 class NewsongCards extends StatelessWidget {
@@ -47,7 +48,6 @@ class _NewsongCardState extends State<NewsongCard> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final songData = widget.song['song'] ?? widget.song;
     final al = (songData['al'] ?? songData['album'] ?? {}) as Map<String, dynamic>;
     final ar = (songData['ar'] ?? songData['artists'] ?? []) as List<dynamic>;
@@ -70,7 +70,8 @@ class _NewsongCardState extends State<NewsongCard> {
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+            // 表面色交给主题（原写死 0xFF1E1E2E / Colors.white）。
+            color: cs.surfaceContainerHigh,
             boxShadow: _hovering ? [
               BoxShadow(color: cs.shadow.withOpacity(0.12), blurRadius: 12, offset: const Offset(0, 4)),
             ] : [
@@ -94,6 +95,7 @@ class _NewsongCardState extends State<NewsongCard> {
                             imageUrl: pic,
                             httpHeaders: getImageHeaders(pic),
                             fit: BoxFit.cover,
+                            errorWidget: (context, url, error) => const LxImageFallback(),
                           ),
                         ),
                       ),

@@ -14,6 +14,7 @@ import '../services/auth_service.dart';
 import '../pages/auth/auth_page.dart';
 import '../utils/theme_manager.dart';
 import 'track_action_menu.dart';
+import 'lx_image_fallback.dart';
 
 /// 平台配色映射 - 使用品牌相关色系的小球代替文字
 /// 用于规避直接显示平台名称的风险
@@ -1297,6 +1298,7 @@ class _SearchWidgetState extends State<SearchWidget> {
                           child: CupertinoActivityIndicator(radius: 10),
                         ),
                       ),
+                      errorWidget: (context, url, error) => const LxImageFallback(),
                     ),
                   ),
             const SizedBox(width: 12),
@@ -2676,6 +2678,7 @@ class _SearchWidgetState extends State<SearchWidget> {
                           child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                         ),
                       ),
+                      errorWidget: (context, url, error) => const LxImageFallback(),
                     ),
             ),
           ),

@@ -832,97 +832,108 @@ class _MiniPlayerWindowPageState extends State<MiniPlayerWindowPage>
   }
 
   /// 构建控制按钮行
+  ///
+  /// 每个控件平分一行并居中：整行铺满窗口宽度，既保证每个按钮的触控目标不小于
+  /// 44×44（改造前最窄的按钮只有 28×28），又能在窗口收到最小宽度（320）时由
+  /// `Expanded` 自动压缩、绝不溢出。
   Widget _buildControlsRow(PlayerService player) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // 音量按钮
-        _buildControlButton(
+        _controlSlot(MiniPlayerControlButton(
           icon: Icons.volume_up_rounded,
           onPressed: () => _showVolumeDialog(player),
           size: 20,
-        ),
-        
-        const SizedBox(width: 8),
-        
+        )),
         // 更多按钮
-        _buildControlButton(
+        _controlSlot(MiniPlayerControlButton(
           icon: Icons.more_horiz_rounded,
           onPressed: () {},
           size: 20,
-        ),
-        
-        const SizedBox(width: 12),
-        
+        )),
         // 上一首
-        _buildControlButton(
+        _controlSlot(MiniPlayerControlButton(
           icon: Icons.fast_rewind_rounded,
           onPressed: player.hasPrevious ? () => player.playPrevious() : null,
           size: 24,
-        ),
-        
-        const SizedBox(width: 8),
-        
+        )),
         // 播放/暂停
-        _buildControlButton(
+        _controlSlot(MiniPlayerControlButton(
           icon: player.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
           onPressed: () => player.togglePlayPause(),
           size: 28,
           isPrimary: true,
-        ),
-        
-        const SizedBox(width: 8),
-        
+        )),
         // 下一首
-        _buildControlButton(
+        _controlSlot(MiniPlayerControlButton(
           icon: Icons.fast_forward_rounded,
           onPressed: player.hasNext ? () => player.playNext() : null,
           size: 24,
-        ),
-        
-        const SizedBox(width: 12),
-        
+        )),
         // 歌词按钮
-        _buildControlButton(
+        _controlSlot(MiniPlayerControlButton(
           icon: Icons.subtitles_rounded,
           onPressed: Platform.isWindows ? () => _toggleDesktopLyric() : null,
           size: 20,
-        ),
-        
-        const SizedBox(width: 8),
-        
+        )),
         // 播放列表按钮
-        _buildControlButton(
+        _controlSlot(MiniPlayerControlButton(
           icon: Icons.queue_music_rounded,
           onPressed: _queuePanelController.isAnimating
               ? null
               : (_isQueuePanelOpen ? _closeQueuePanel : _openQueuePanel),
           size: 20,
-        ),
+        )),
       ],
     );
   }
 
-  /// 构建单个控制按钮
-  Widget _buildControlButton({
-    required IconData icon,
-    required VoidCallback? onPressed,
-    required double size,
-    bool isPrimary = false,
-  }) {
+  /// 把单个控制按钮放进等宽的一格并居中。
+  Widget _controlSlot(Widget child) => Expanded(child: Center(child: child));
+}
+
+/// 迷你播放器窗口的单个控制按钮。
+///
+/// 独立成顶层组件：一是把 44×44 的最小触控目标集中到一处（Material / Apple HIG
+/// 建议值），二是能脱离 `PlayerService` / 窗口服务单独渲染，便于单测断言触控区域
+/// 尺寸。图标大小仍由 [size] 决定，视觉观感不变，只是把可点区域撑到位。
+class MiniPlayerControlButton extends StatelessWidget {
+  const MiniPlayerControlButton({
+    super.key,
+    required this.icon,
+    required this.onPressed,
+    required this.size,
+    this.isPrimary = false,
+  });
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  /// 图标的视觉尺寸（不随触控目标一起变化）。
+  final double size;
+
+  final bool isPrimary;
+
+  /// 最小触控目标边长。Material 与 Apple HIG 都建议不小于 44。
+  static const double minTapTarget = 44;
+
+  @override
+  Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onPressed,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Icon(
-            icon,
-            color: onPressed != null
-                ? (isPrimary ? Colors.white : Colors.white.withOpacity(0.85))
-                : Colors.white.withOpacity(0.3),
-            size: size,
+        borderRadius: BorderRadius.circular(minTapTarget / 2),
+        child: SizedBox.square(
+          dimension: minTapTarget,
+          child: Center(
+            child: Icon(
+              icon,
+              color: onPressed != null
+                  ? (isPrimary ? Colors.white : Colors.white.withOpacity(0.85))
+                  : Colors.white.withOpacity(0.3),
+              size: size,
+            ),
           ),
         ),
       ),

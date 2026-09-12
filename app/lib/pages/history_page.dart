@@ -9,6 +9,7 @@ import '../services/player_service.dart';
 import '../models/track.dart';
 import '../utils/theme_manager.dart';
 import '../widgets/track_action_menu.dart';
+import '../widgets/lx_image_fallback.dart';
 
 /// 播放历史页面
 class HistoryPage extends StatefulWidget {
@@ -673,6 +674,7 @@ class _HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClient
                                 height: 60,
                                 color: colorScheme.surfaceContainerHighest,
                               ),
+                              errorWidget: (context, url, error) => const LxImageFallback(),
                             ),
                           ),
                         ),

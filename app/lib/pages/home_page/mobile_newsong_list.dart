@@ -5,6 +5,8 @@ import '../../utils/theme_manager.dart';
 import '../../widgets/lx_surface.dart';
 
 /// 新歌列表（移动端）
+import '../../widgets/lx_image_fallback.dart';
+import 'hero_section.dart'; // 复用 convertToTrack 函数
 class MobileNewsongList extends StatelessWidget {
   final List<Map<String, dynamic>> list;
   const MobileNewsongList({super.key, required this.list});
@@ -59,7 +61,7 @@ class MobileNewsongList extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  child: Image.network(pic, width: 48, height: 48, fit: BoxFit.cover),
+                  child: Image.network(pic, width: 48, height: 48, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => const LxImageFallback(),),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

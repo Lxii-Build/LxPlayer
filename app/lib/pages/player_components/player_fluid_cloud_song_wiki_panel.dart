@@ -9,6 +9,7 @@ import '../../services/netease_discover_service.dart';
 import '../../services/playlist_queue_service.dart';
 import '../../models/track.dart';
 import '../../models/netease_discover.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 /// 流体云专用歌曲百科面板
 /// 展示曲风、BPM、语种、回忆坐标、相似歌曲等
@@ -1206,6 +1207,7 @@ class _PlayerFluidCloudSongWikiPanelState extends State<PlayerFluidCloudSongWiki
                       color: Colors.white.withOpacity(0.1),
                       child: Icon(Icons.music_note, color: Colors.white.withOpacity(0.3)),
                     ),
+                    errorWidget: (context, url, error) => const LxImageFallback(),
                   ),
                 ),
                 const SizedBox(width: 16),

@@ -193,12 +193,31 @@ class _DonateFormResult {
   _DonateFormResult(this.method, this.amount);
 }
 
+/// 打开打赏弹窗。
+///
+/// 弹窗内容（Cupertino / Fluent / Material 三种分支）都要复用一个
+/// `TextEditingController`，这里统管它的生命周期：对话框关闭、
+/// `_showDonateDialogContent` 返回后统一释放，避免每次打开都泄漏一个 controller。
 Future<_DonateFormResult?> _showDonateDialog(BuildContext context) async {
+  final TextEditingController customCtrl = TextEditingController();
+  try {
+    return await _showDonateDialogContent(context, customCtrl);
+  } finally {
+    customCtrl.dispose();
+  }
+}
+
+/// 打赏弹窗的实际内容构建（Cupertino / Fluent / Material 三分支）。
+///
+/// `customCtrl` 由 [_showDonateDialog] 注入，并在其返回后释放。
+Future<_DonateFormResult?> _showDonateDialogContent(
+  BuildContext context,
+  TextEditingController customCtrl,
+) async {
   final bool isFluent = fluent_ui.FluentTheme.maybeOf(context) != null;
   final bool isCupertino = (Platform.isIOS || Platform.isAndroid) && ThemeManager().isCupertinoFramework;
   double amount = 6.0;
   String method = 'alipay';
-  final TextEditingController customCtrl = TextEditingController();
   String? errorText;
 
   // iOS Cupertino 风格对话框

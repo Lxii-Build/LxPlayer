@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/image_utils.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 /// 雷达歌单网格 - 统一尺寸
 class MixedSizePlaylistGrid extends StatelessWidget {
@@ -84,6 +85,7 @@ class _MixedPlaylistCardState extends State<MixedPlaylistCard> {
                           imageUrl: pic,
                           httpHeaders: getImageHeaders(pic),
                           fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => const LxImageFallback(),
                         ),
                       ),
                       AnimatedOpacity(

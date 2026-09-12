@@ -9,6 +9,7 @@ import '../services/player_service.dart';
 import '../models/track.dart';
 import 'album_detail_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/lx_image_fallback.dart';
 
 class ArtistDetailPage extends StatefulWidget {
   final int artistId;
@@ -491,6 +492,7 @@ class _SongsListView extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              errorWidget: (context, url, error) => const LxImageFallback(),
                             ),
                           ),
                         ),
@@ -550,6 +552,7 @@ class _SongsListView extends StatelessWidget {
                 width: 50,
                 height: 50,
                 fit: BoxFit.cover,
+                errorWidget: (context, url, error) => const LxImageFallback(),
               ),
             ),
             title: Text(track.name, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -596,6 +599,7 @@ class _SongsListView extends StatelessWidget {
                     child: CupertinoActivityIndicator(radius: 10),
                   ),
                 ),
+                errorWidget: (context, url, error) => const LxImageFallback(),
               ),
             ),
             const SizedBox(width: 12),
@@ -718,7 +722,7 @@ class _AlbumsListView extends StatelessWidget {
             isDark: isDark,
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(6),
-              child: CachedNetworkImage(imageUrl: cover, width: 56, height: 56, fit: BoxFit.cover),
+              child: CachedNetworkImage(imageUrl: cover, width: 56, height: 56, fit: BoxFit.cover, errorWidget: (context, url, error) => const LxImageFallback(),),
             ),
             title: Text(a['name']?.toString() ?? ''),
             subtitle: Text((a['company']?.toString() ?? '').isEmpty ? '' : a['company'].toString()),
@@ -783,6 +787,7 @@ class _AlbumsListView extends StatelessWidget {
                     child: CupertinoActivityIndicator(radius: 10),
                   ),
                 ),
+                errorWidget: (context, url, error) => const LxImageFallback(),
               ),
             ),
             const SizedBox(width: 12),
@@ -875,7 +880,7 @@ class _SongsThumbView extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(imageUrl: pic, width: 80, height: 80, fit: BoxFit.cover),
+                child: CachedNetworkImage(imageUrl: pic, width: 80, height: 80, fit: BoxFit.cover, errorWidget: (context, url, error) => const LxImageFallback(),),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1002,7 +1007,7 @@ class _AlbumsThumbView extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(imageUrl: cover, width: 80, height: 80, fit: BoxFit.cover),
+                child: CachedNetworkImage(imageUrl: cover, width: 80, height: 80, fit: BoxFit.cover, errorWidget: (context, url, error) => const LxImageFallback(),),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1538,6 +1543,7 @@ class _ArtistDetailContentState extends State<ArtistDetailContent> {
                             ),
                           ),
                         ),
+                        errorWidget: (context, url, error) => const LxImageFallback(),
                       ),
                     ),
                   ),
@@ -1637,6 +1643,7 @@ class _ArtistDetailContentState extends State<ArtistDetailContent> {
                       width: 80,
                       height: 80,
                       fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => const LxImageFallback(),
                     ),
                   ),
                   const SizedBox(width: 16),

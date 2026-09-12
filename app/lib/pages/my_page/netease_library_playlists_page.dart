@@ -5,6 +5,7 @@ import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import '../../services/netease_login_service.dart';
 import '../../utils/theme_manager.dart';
 import '../discover_playlist_detail_page.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 class NeteaseLibraryPlaylistsPage extends StatefulWidget {
   const NeteaseLibraryPlaylistsPage({super.key});
@@ -92,7 +93,11 @@ class _NeteaseLibraryPlaylistsState extends State<NeteaseLibraryPlaylistsPage> {
               width: 56,
               height: 56,
               fit: BoxFit.cover,
-              placeholder: (context, url) => Container(color: Colors.grey[300]),
+              // 占位色随主题（原写死 Colors.grey[300] 在深色下会突兀发白）。
+              placeholder: (context, url) => Container(
+                color: Colors.grey[
+                    Theme.of(context).brightness == Brightness.dark ? 800 : 200],
+              ),
               errorWidget: (context, url, error) => const Icon(Icons.music_note),
             ),
           ),
@@ -139,6 +144,7 @@ class _NeteaseLibraryPlaylistsState extends State<NeteaseLibraryPlaylistsPage> {
                                     width: 60,
                                     height: 60,
                                     fit: BoxFit.cover,
+                                    errorWidget: (context, url, error) => const LxImageFallback(),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
@@ -211,6 +217,7 @@ class _NeteaseLibraryPlaylistsState extends State<NeteaseLibraryPlaylistsPage> {
                               width: 48,
                               height: 48,
                               fit: BoxFit.cover,
+                              errorWidget: (context, url, error) => const LxImageFallback(),
                             ),
                           ),
                           title: Text(playlist.name),

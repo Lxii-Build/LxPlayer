@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/image_utils.dart';
+import '../../widgets/lx_image_fallback.dart';
 
 /// 横向滚动歌单 - Microsoft Store 风格
 class HorizontalPlaylistCarousel extends StatelessWidget {
@@ -46,7 +47,6 @@ class _CarouselPlaylistCardState extends State<CarouselPlaylistCard> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final pic = (widget.playlist['picUrl'] ?? widget.playlist['coverImgUrl'] ?? '').toString();
     final name = widget.playlist['name']?.toString() ?? '';
     final desc = (widget.playlist['description'] ?? widget.playlist['copywriter'] ?? '').toString();
@@ -62,7 +62,8 @@ class _CarouselPlaylistCardState extends State<CarouselPlaylistCard> {
           width: 320,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            color: isDark ? const Color(0xFF1E1E2E) : Colors.white,
+            // 表面色交给主题（原写死 0xFF1E1E2E / Colors.white）。
+            color: cs.surfaceContainerHigh,
             boxShadow: _hovering ? [
               BoxShadow(color: cs.primary.withOpacity(0.15), blurRadius: 20, offset: const Offset(0, 8)),
             ] : [
@@ -86,6 +87,7 @@ class _CarouselPlaylistCardState extends State<CarouselPlaylistCard> {
                           imageUrl: pic,
                           httpHeaders: getImageHeaders(pic),
                           fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => const LxImageFallback(),
                         ),
                       ),
                       // 播放按钮

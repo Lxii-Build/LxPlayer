@@ -84,6 +84,7 @@ extension MyPageMaterialUI on _MyPageState {
                         : CachedNetworkImage(
                             imageUrl: user.avatarUrl!,
                             fit: BoxFit.cover,
+                            errorWidget: (context, url, error) => const LxImageFallback(),
                           ))
                     : Container(color: colorScheme.surface),
               ),

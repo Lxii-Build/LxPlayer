@@ -18,6 +18,7 @@ import '../utils/theme_manager.dart';
 import 'package:http/http.dart' as http;
 import '../services/url_service.dart';
 import '../services/playlist_service.dart';
+import '../widgets/lx_image_fallback.dart';
 
 class DiscoverPlaylistDetailPage extends StatelessWidget {
   final int playlistId;
@@ -207,6 +208,7 @@ class _DiscoverPlaylistDetailContentState
                       width: 120,
                       height: 120,
                       fit: BoxFit.cover,
+                      errorWidget: (context, url, error) => const LxImageFallback(),
                     ),
                   ),
                 ),
@@ -1826,6 +1828,7 @@ class _DiscoverPlaylistDetailContentState
             width: 120,
             height: 120,
             fit: BoxFit.cover,
+            errorWidget: (context, url, error) => const LxImageFallback(),
           ),
         ),
         const SizedBox(width: 16),

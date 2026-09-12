@@ -9,6 +9,7 @@ import '../../services/player_service.dart';
 import '../../utils/theme_manager.dart';
 import '../skeleton_loader.dart';
 
+import '../lx_image_fallback.dart';
 /// iOS 风格的分段控制器（替代胶囊 Tabs）
 /// 采用轻量纯文字样式，更符合 iOS 原生设计
 class CupertinoHomeSegmentedControl extends StatelessWidget {
@@ -475,6 +476,7 @@ class CupertinoHistorySection extends StatelessWidget {
                         child: const CupertinoActivityIndicator(),
                       ),
                     ),
+                      errorWidget: (context, url, error) => const LxImageFallback(),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -605,6 +607,7 @@ class CupertinoGuessYouLikeSection extends StatelessWidget {
                 height: 60,
                 fit: BoxFit.cover,
               ),
+                errorWidget: (context, url, error) => const LxImageFallback(),
             ),
             const SizedBox(width: 12),
             Expanded(

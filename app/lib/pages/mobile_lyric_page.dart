@@ -7,6 +7,7 @@ import '../services/lyric_style_service.dart';
 import '../models/lyric_line.dart';
 import '../utils/lyric_parser.dart';
 import 'mobile_player_components/mobile_player_fluid_cloud_lyric.dart';
+import '../widgets/lx_image_fallback.dart';
 
 /// 移动端全屏滚动歌词页面
 class MobileLyricPage extends StatefulWidget {
@@ -247,6 +248,7 @@ class _MobileLyricPageState extends State<MobileLyricPage> {
                     ),
                   ),
                 ),
+                errorWidget: (context, url, error) => const LxImageFallback(),
               ),
             ),
           
