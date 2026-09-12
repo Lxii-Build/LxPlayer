@@ -93,6 +93,19 @@ android {
             // 同一张签名，才能互相覆盖安装而不丢数据。
             signingConfig = signingConfigs.getByName("unified")
             manifestPlaceholders["appName"] = "LxPlayer"
+
+            // 显式声明 debug 的 ABI，内容与 Flutter 插件原本的默认列表一致
+            // （FlutterPluginConstants.kt 的 DEFAULT_PLATFORMS = ARM32/ARM64/X86_64）。
+            //
+            // 为什么必须写出来：gradle.properties 里关掉了插件的 ABI 过滤
+            // （disable-abi-filtering=true，为了 release 能只打 ARM），
+            // 于是 debug 不再被插件限制，AGP 会放进全部 4 个 ABI —— 多出的 32 位
+            // x86 让 debug 包从 129MiB 涨到 253MiB，纯浪费。
+            // 这里显式写回 3 个，既恢复原状又保留 x86_64 模拟器调试能力。
+            ndk {
+                abiFilters.clear()
+                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64"))
+            }
         }
 
         release {
