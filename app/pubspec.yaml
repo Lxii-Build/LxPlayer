@@ -110,10 +110,25 @@ dependencies:
   # Video player for video backgrounds (Android/iOS)
   video_player: ^2.9.2
   
-  # Media kit for video playback on Windows/Desktop platforms
+  # Media kit：桌面端音频 + 视频背景。
+  #
+  # 原生库**按平台分别声明**，不用 `media_kit_libs_video` 元包——那个元包会把
+  # 所有平台的「视频版」原生库一并拉进来，包括 Android。
+  #
+  # Android 用 audio-only 版的原因（已核实，不是猜测）：
+  #   - 全仓库 `VideoController`（media_kit 的视频能力）只出现在
+  #     `lib/widgets/video_background_player_desktop.dart`，即只有桌面端用；
+  #   - 移动端视频背景走 `video_player`（Android 即 ExoPlayer），见
+  #     `lib/widgets/video_background_player_mobile.dart`；
+  #   - `player_service.dart` 只用 `mk.Player`（音频），没有任何 VideoController。
+  # 所以 Android 上打包视频版 libmpv（含完整 FFmpeg 视频解码）是纯体积浪费。
+  # audio-only 版是 media_kit 官方为「只播音频的应用」提供的包。
   media_kit: ^1.1.11
   media_kit_video: ^1.2.5
-  media_kit_libs_video: ^1.0.7
+  media_kit_libs_android_audio: ^1.3.8
+  media_kit_libs_ios_video: ^1.1.4
+  media_kit_libs_windows_video: ^1.0.11
+  media_kit_libs_macos_video: ^1.1.4
   media_kit_libs_linux: ^1.2.1
   mobile_scanner: ^7.1.4
   
