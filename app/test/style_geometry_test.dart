@@ -127,6 +127,21 @@ void main() {
       expect(shadowed.length, 1);
     });
 
+    testWidgets('堆叠区不裁剪，越界的旋转盖层才不会被切掉', (tester) async {
+      await tester.pumpWidget(_wrap(FanCoverStack(tracks: _tracks(3), featuredIndex: 0)));
+
+      final stack = tester.widget<Stack>(_inStack(find.byType(Stack)));
+      // 三层的旋转外接盒会越出这块 160×192 画布（最外层向右约 13、向左约 10、
+      // 向上约 4），而 Stack 默认 Clip.hardEdge 会把越界的边硬切掉——这正是
+      // 「为你推荐」卡最外层封面被卡片切线的原因。参考实现（RN）默认不裁剪，
+      // 所以这里钉住「不裁剪」这个非默认值，防止回归。
+      expect(
+        stack.clipBehavior,
+        Clip.none,
+        reason: 'Stack 默认 Clip.hardEdge 会把旋转后越界的封面切掉',
+      );
+    });
+
     testWidgets('没有歌时整块收起来，不留下空盒子', (tester) async {
       await tester.pumpWidget(_wrap(const FanCoverStack(tracks: [], featuredIndex: 0)));
 

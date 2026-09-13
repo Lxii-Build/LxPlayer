@@ -16,6 +16,14 @@ import '../../widgets/oculus/oculus_home_widgets.dart';
 import '../../widgets/skeleton_loader.dart';
 import '../../widgets/lx_image_fallback.dart';
 
+/// 首页区块的纵向节奏。
+///
+/// 参考实现的节奏是「区块标题→内容 16、区块之间 36–40」。原先每个区块各写一个
+/// 魔数（24 / 56 / 56 / 64），越看越不齐；这里收敛成一组常量，只调间距，不动
+/// 区块顺序。
+const double _kSectionTitleGap = 16;
+const double _kSectionGap = 40;
+
 class ChartsTab extends StatelessWidget {
   final List<Track> cachedRandomTracks;
   final Future<void> Function() checkLoginStatus;
@@ -85,7 +93,7 @@ class ChartsTab extends StatelessWidget {
           children: [
             // 0. Expressive Page Title
             Padding(
-              padding: const EdgeInsets.only(top: 16, bottom: 40),
+              padding: const EdgeInsets.only(top: 16, bottom: _kSectionGap),
               child: Text(
                 '音乐榜单',
                 style: Theme.of(context).textTheme.displaySmall?.copyWith(
@@ -98,20 +106,20 @@ class ChartsTab extends StatelessWidget {
 
             // 1. 顶部 BENTO GRID
             Padding(
-              padding: const EdgeInsets.only(bottom: 56),
+              padding: const EdgeInsets.only(bottom: _kSectionGap),
               child: _buildFeaturedSection(context, constraints),
             ),
 
             // 2. 历史与推荐 (Quick Access)
             Padding(
-              padding: const EdgeInsets.only(bottom: 56),
+              padding: const EdgeInsets.only(bottom: _kSectionGap),
               child: _buildQuickAccessSection(context, isWide),
             ),
 
-            // 3. 榜单列表 (更具表现力的间距)
+            // 3. 榜单列表（与上方保持同一节奏）
             ...MusicService().toplists.map((toplist) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 64.0),
+                padding: const EdgeInsets.only(bottom: _kSectionGap),
                 child: _ToplistSection(
                   toplist: toplist,
                   checkLoginStatus: checkLoginStatus,
@@ -119,7 +127,7 @@ class ChartsTab extends StatelessWidget {
               );
             }),
             
-             SizedBox(height: MediaQuery.of(context).padding.bottom + 80),
+             SizedBox(height: MediaQuery.of(context).padding.bottom + 48),
           ],
         );
       },
@@ -135,7 +143,7 @@ class ChartsTab extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 24.0),
+          padding: const EdgeInsets.only(bottom: _kSectionTitleGap),
           child: Text(
             '每日推荐',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -203,16 +211,16 @@ class _ToplistSection extends StatelessWidget {
             onMoreTap: () => showToplistDetail(context, toplist),
             moreLabel: '全部',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: _kSectionTitleGap),
           SizedBox(
-            height: 220,
+            height: ToplistTrackCard.cardHeight,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 4),
               itemCount: toplist.tracks.take(12).length,
-              separatorBuilder: (c, i) => const SizedBox(width: 16),
+              separatorBuilder: (c, i) => const SizedBox(width: 12),
               itemBuilder: (context, index) {
-                return _ToplistTrackCard(
+                return ToplistTrackCard(
                   track: toplist.tracks[index],
                   rank: index,
                   checkLoginStatus: checkLoginStatus,
@@ -263,15 +271,15 @@ class _ToplistSection extends StatelessWidget {
               ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: _kSectionTitleGap),
         SizedBox(
-          height: 220, // 增加高度以容纳更美观的卡片
+          height: ToplistTrackCard.cardHeight,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: toplist.tracks.take(12).length,
-            separatorBuilder: (c, i) => const SizedBox(width: 16),
+            separatorBuilder: (c, i) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              return _ToplistTrackCard(
+              return ToplistTrackCard(
                 track: toplist.tracks[index], 
                 rank: index,
                 checkLoginStatus: checkLoginStatus,
@@ -284,29 +292,38 @@ class _ToplistSection extends StatelessWidget {
   }
 }
 
-class _ToplistTrackCard extends StatefulWidget {
+class ToplistTrackCard extends StatefulWidget {
   final Track track;
   final int rank;
   final Future<void> Function() checkLoginStatus;
 
-  const _ToplistTrackCard({
+  const ToplistTrackCard({
+    super.key,
     required this.track,
     required this.rank,
     required this.checkLoginStatus,
   });
 
+  /// 卡宽。横向榜单列表用它算高度预算（见 [cardHeight]）。
+  static const double cardWidth = 160;
+
+  /// 卡高（含封面与下方两行文字）。
+  ///
+  /// 封面靠 `Expanded` 吃掉剩余空间，所以这个值决定封面实际多大：
+  /// 220 − 间距 10 − 标题约 20 − 歌手约 16 − 底部留白 4 ≈ 170，
+  /// 也就是封面约 160×170，接近方形。
+  static const double cardHeight = 220;
+
   @override
-  State<_ToplistTrackCard> createState() => _ToplistTrackCardState();
+  State<ToplistTrackCard> createState() => _ToplistTrackCardState();
 }
 
-class _ToplistTrackCardState extends State<_ToplistTrackCard> {
+class _ToplistTrackCardState extends State<ToplistTrackCard> {
   bool _isHovering = false;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final width = 160.0; // 宽度略微增加
-    final borderRadius = BorderRadius.circular(24); // 圆角增加
 
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovering = true),
@@ -321,19 +338,17 @@ class _ToplistTrackCardState extends State<_ToplistTrackCard> {
           PlayerService().playTrack(widget.track);
         },
         child: SizedBox(
-          width: width,
-          // 表面统一交给 LxSurface（替换原先的 `Container(color: transparent)`：
-          // 榜单卡此前是"裸卡"，没有任何表面，正是首页上下割裂的来源之一）。
+          width: ToplistTrackCard.cardWidth,
+          // 封面直接作为卡片本体：表面内边距为 0，只靠表面的圆角裁剪。
           //
-          // 高度预算复核（外层是 `SizedBox(height: 220)`）：固定高度部分 =
-          // 上下内边距 24 + 间距 12 + 标题约 20 + 副标题约 16 ≈ 72，
-          // 剩下约 148 全部归 Expanded 的封面，不会溢出。封面走 BoxFit.cover，
-          // 尺寸从 160×172 收到约 136×148，只会多裁一点，不会被压变形。
-          // 原先贴在两行文字上的 `horizontal: 4` 内边距由表面的 12 接管，去掉后
-          // 文字与封面依然左对齐。
+          // 上一版这里给了 12 的内边距，结果封面四周多出一圈底色，看起来像给封面
+          // 套了个框——参考实现里没有这种效果。归零后封面从 136 宽长到 160 宽，
+          // 同样的占地里封面更大，且圆角与框架分支（玻璃/实心）仍由 LxSurface 负责，
+          // 不丢失「表面统一」本身。
           child: LxSurface(
             borderRadius: _surfaceRadius,
-            padding: const EdgeInsets.all(_surfacePadding),
+            clipBehavior: Clip.antiAlias,
+            padding: EdgeInsets.zero,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -341,22 +356,21 @@ class _ToplistTrackCardState extends State<_ToplistTrackCard> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: [
-                      ClipRRect(
-                        borderRadius: borderRadius,
-                        child: AnimatedScale(
-                          scale: _isHovering ? 1.05 : 1.0,
-                          duration: const Duration(milliseconds: 200),
-                          child: CachedNetworkImage(
-                            imageUrl: widget.track.picUrl,
-                            httpHeaders: getImageHeaders(widget.track.picUrl),
-                            fit: BoxFit.cover,
-                            errorWidget: (context, url, error) => const LxImageFallback(),
-                          ),
+                      // 不再套 ClipRRect：封面已经贴到表面边缘，圆角由表面的裁剪给出，
+                      // 再套一层会形成内外两道圆角。
+                      AnimatedScale(
+                        scale: _isHovering ? 1.05 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: CachedNetworkImage(
+                          imageUrl: widget.track.picUrl,
+                          httpHeaders: getImageHeaders(widget.track.picUrl),
+                          fit: BoxFit.cover,
+                          errorWidget: (context, url, error) => const LxImageFallback(),
                         ),
                       ),
                       Positioned(
-                        top: 4,
-                        left: 4,
+                        top: 8,
+                        left: 8,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
@@ -395,25 +409,35 @@ class _ToplistTrackCardState extends State<_ToplistTrackCard> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Text(
-                  widget.track.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.2,
+                const SizedBox(height: 10),
+                // 文字区自带左右内边距（表面已无内边距，否则文字会顶到卡边）。
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.track.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                      Text(
+                        widget.track.artists,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  widget.track.artists,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.textTheme.bodySmall?.color?.withOpacity(0.6),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                const SizedBox(height: 4),
               ],
             ),
           ),
@@ -424,8 +448,4 @@ class _ToplistTrackCardState extends State<_ToplistTrackCard> {
 
   /// 与首页推荐卡（`swipe_recommend_card.dart`）一致的统一圆角。
   static const double _surfaceRadius = 28;
-
-  /// 表面内边距。榜单卡是横向列表里的窄卡（160 宽），用 12 而不是推荐卡的 20：
-  /// 20 会把 160 的封面挤到 120，封面明显变小；12 既能露出表面边框又不吃掉封面。
-  static const double _surfacePadding = 12;
 }

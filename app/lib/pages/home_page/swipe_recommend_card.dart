@@ -179,6 +179,16 @@ const List<FanLayerSpec> fanCoverLayerSpecs = [
   ),
 ];
 
+/// 扇形堆叠的定位画布尺寸。
+///
+/// 参考实现里封面列是 160×192，三层封面用绝对定位摆在这块框的右下角，
+/// 旋转后最外层会越出这个框（向右约 13、向左约 10、向上约 4）。React Native
+/// 的 View **默认不裁剪**，越界部分照样画出来——参考项目因此看起来是完整的扇形。
+///
+/// Flutter 的 `Stack` 默认是 `Clip.hardEdge`，会把越界部分**直接切掉**：这正是
+/// 本卡最外层封面被卡片边缘切线的原因。修法是给 `Stack` 显式 `Clip.none`
+/// （见 [FanCoverStack]），越界量（≤13）又远小于卡片 20 的内边距，所以三层封面
+/// 仍然完整落在卡片内、不会压到卡片圆角。
 const double fanStackWidth = 160;
 const double fanStackHeight = 192;
 const double _fanCoverRadius = 24;
@@ -566,7 +576,8 @@ class _PlayPill extends StatelessWidget {
         style: TextStyle(
           color: foreground,
           fontSize: 14,
-          fontWeight: FontWeight.w600,
+          // 与参考实现一致：播放键文案加粗到 800。
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
@@ -668,6 +679,11 @@ class FanCoverStack extends StatelessWidget {
       width: fanStackWidth,
       height: fanStackHeight,
       child: Stack(
+        // 必须 Clip.none：三层的旋转外接盒会越出这块 160×192 的画布（最外层向右
+        // 约 13、向左约 10、向上约 4），而 Stack 默认是 Clip.hardEdge，会把越界
+        // 的那条边硬切掉——参考实现（RN）默认不裁剪，所以这里是「还原」而不是
+        // 「放宽」。越界量小于卡片 20 的内边距，封面依旧收在卡内。
+        clipBehavior: Clip.none,
         children: [
           _layer(context, fanCoverLayerSpecs[0], _coverAt(2)),
           _layer(context, fanCoverLayerSpecs[1], _coverAt(1)),
