@@ -122,7 +122,7 @@ class _AboutSettingsContentState extends State<AboutSettingsContent> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(24),
                 child: Image.asset(
-                  'assets/icons/new_ico_white.png',
+                  'assets/icons/app_logo.png',
                   width: 96,
                   height: 96,
                 ),
@@ -321,7 +321,7 @@ class _AboutSettingsContentState extends State<AboutSettingsContent> {
               ClipRRect(
                 borderRadius: BorderRadius.circular(24),
                 child: Image.asset(
-                  'assets/icons/new_ico_white.png',
+                  'assets/icons/app_logo.png',
                   width: 96,
                   height: 96,
                 ),
@@ -509,7 +509,7 @@ class _AboutSettingsContentState extends State<AboutSettingsContent> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(12),
           child: Image.asset(
-            'assets/icons/new_ico_white.png',
+            'assets/icons/app_logo.png',
             width: 48,
             height: 48,
           ),

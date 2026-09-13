@@ -177,7 +177,11 @@ flutter:
     - assets/icons/tray_icon.ico
     - assets/icons/tray_icon.png
     - assets/icons/new_ico.png
-    - assets/icons/new_ico_white.png
+    # 运行时用的应用图标（512px）。**故意不把 new_ico_white.png 放进来**：
+    # 那个 2048px 源图只给 flutter_launcher_icons 做启动图标用（生成期），
+    # 而它在界面上只显示到 96×96。原先把源图一并打进包里是白占 699KB，
+    # 而且因为 .so/PNG 在 APK 内是未压缩存储，那 699KB 是实打实的。
+    - assets/icons/app_logo.png
     - assets/ui/
     - windows/runner/updater.ps1
 
