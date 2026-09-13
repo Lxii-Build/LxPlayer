@@ -8,6 +8,16 @@ val keystoreProperties = Properties().apply {
     }
 }
 
+/// 本次构建是否启用了按 ABI 分片。
+///
+/// Flutter 在收到 `--split-per-abi` 时会向 Gradle 传 `-Psplit-per-abi=true`
+/// （见 FlutterPluginUtils.kt 的 `PROP_SPLIT_PER_ABI`），这里读同一个属性。
+///
+/// 用途：AGP 在配置阶段就会校验「splits.abi 启用时不能存在与之不一致的
+/// ndk.abiFilters」，所以 debug 变体的 abiFilters 必须按构建方式条件设置——
+/// 详见下面 `buildTypes.debug` 里的说明。
+val splitPerAbi = project.findProperty("split-per-abi")?.toString()?.toBoolean() ?: false
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -94,17 +104,24 @@ android {
             signingConfig = signingConfigs.getByName("unified")
             manifestPlaceholders["appName"] = "LxPlayer"
 
-            // 显式声明 debug 的 ABI，内容与 Flutter 插件原本的默认列表一致
+            // debug 显式声明 ABI，内容与 Flutter 插件原本的默认列表一致
             // （FlutterPluginConstants.kt 的 DEFAULT_PLATFORMS = ARM32/ARM64/X86_64）。
             //
-            // 为什么必须写出来：gradle.properties 里关掉了插件的 ABI 过滤
-            // （disable-abi-filtering=true，为了 release 能只打 ARM），
-            // 于是 debug 不再被插件限制，AGP 会放进全部 4 个 ABI —— 多出的 32 位
-            // x86 让 debug 包从 129MiB 涨到 253MiB，纯浪费。
-            // 这里显式写回 3 个，既恢复原状又保留 x86_64 模拟器调试能力。
-            ndk {
-                abiFilters.clear()
-                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64"))
+            // 为什么必须写出来：gradle.properties 里关了插件的 ABI 过滤
+            // （disable-abi-filtering=true），debug 不再被插件限制，AGP 会放进
+            // 全部 4 个 ABI —— 多出的 32 位 x86 让 debug 包从 129MiB 涨到 253MiB。
+            //
+            // 为什么外面套 if (!splitPerAbi)：AGP 在**配置阶段**就做全局校验，
+            // 「splits.abi 启用时任何变体都不能带 ndk.abiFilters，除非两者完全一致」。
+            // release 走 --split-per-abi 时，这里若仍写着 x86_64 会直接让构建失败：
+            //   Conflicting configuration : 'armeabi-v7a,arm64-v8a,x86_64' in ndk abiFilters
+            //   cannot be present when splits abi filters are set : armeabi-v7a,arm64-v8a
+            // 而 debug 又必须保留 x86_64（模拟器调试），两者只能按构建方式二选一。
+            if (!splitPerAbi) {
+                ndk {
+                    abiFilters.clear()
+                    abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a", "x86_64"))
+                }
             }
         }
 
