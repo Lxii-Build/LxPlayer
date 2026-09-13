@@ -3,8 +3,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../utils/image_utils.dart';
 import '../../services/player_service.dart';
 import '../../services/playlist_queue_service.dart';
-import 'hero_section.dart'; // 复用 convertToTrack 函数
 import '../../widgets/lx_image_fallback.dart';
+import 'newsong_item.dart';
 
 /// 新歌卡片网格
 class NewsongCards extends StatelessWidget {
@@ -48,19 +48,18 @@ class _NewsongCardState extends State<NewsongCard> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final songData = widget.song['song'] ?? widget.song;
-    final al = (songData['al'] ?? songData['album'] ?? {}) as Map<String, dynamic>;
-    final ar = (songData['ar'] ?? songData['artists'] ?? []) as List<dynamic>;
-    final pic = (al['picUrl'] ?? '').toString();
-    final name = songData['name']?.toString() ?? '';
-    final artists = ar.map((e) => (e as Map<String, dynamic>)['name']?.toString() ?? '').where((e) => e.isNotEmpty).join('/');
+    // 与移动端共用同一份解析（旧/新式键、缺字段回落），杜绝两处分叉。
+    final item = NewsongItem.fromJson(widget.song);
+    final pic = item.picUrl;
+    final name = item.name;
+    final artists = item.artists;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hovering = true),
       onExit: (_) => setState(() => _hovering = false),
       child: GestureDetector(
         onTap: () async {
-          final track = convertToTrack(songData);
+          final track = item.toTrack();
           PlaylistQueueService().setQueue([track], 0, QueueSource.search);
           await PlayerService().playTrack(track);
         },

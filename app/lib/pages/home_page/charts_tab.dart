@@ -9,7 +9,6 @@ import '../../services/player_service.dart';
 import '../../services/music_service.dart';
 import '../../utils/theme_manager.dart';
 import 'home_widgets.dart';
-import 'swipe_recommend_card.dart';
 import 'toplist_detail.dart';
 import '../../widgets/lx_surface.dart';
 import '../../widgets/oculus/oculus_home_widgets.dart';
@@ -25,14 +24,12 @@ const double _kSectionTitleGap = 16;
 const double _kSectionGap = 40;
 
 class ChartsTab extends StatelessWidget {
-  final List<Track> cachedRandomTracks;
   final Future<void> Function() checkLoginStatus;
   final Future<List<Track>>? guessYouLikeFuture;
   final VoidCallback onRefresh;
 
   const ChartsTab({
     super.key,
-    required this.cachedRandomTracks,
     required this.checkLoginStatus,
     this.guessYouLikeFuture,
     required this.onRefresh,
@@ -104,19 +101,16 @@ class ChartsTab extends StatelessWidget {
               ),
             ),
 
-            // 1. 顶部 BENTO GRID
-            Padding(
-              padding: const EdgeInsets.only(bottom: _kSectionGap),
-              child: _buildFeaturedSection(context, constraints),
-            ),
-
-            // 2. 历史与推荐 (Quick Access)
+            // 1. 历史与推荐 (Quick Access)
             Padding(
               padding: const EdgeInsets.only(bottom: _kSectionGap),
               child: _buildQuickAccessSection(context, isWide),
             ),
 
-            // 3. 榜单列表（与上方保持同一节奏）
+            // 2. 榜单列表（与上方保持同一节奏）
+            // 注：原先这里还有一张「每日推荐」SwipeRecommendCard（`_buildFeaturedSection`），
+            // 它与「为你推荐」页顶部的同款卡片重复（home_for_you_tab.dart:291），
+            // 已按用户要求从榜单页移除，榜单页只保留榜单与个人向内容。
             ...MusicService().toplists.map((toplist) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: _kSectionGap),
@@ -131,35 +125,6 @@ class ChartsTab extends StatelessWidget {
           ],
         );
       },
-    );
-  }
-
-  Widget _buildFeaturedSection(BuildContext context, BoxConstraints constraints) {
-    if (cachedRandomTracks.isEmpty) return const SizedBox.shrink();
-
-    // 桌面端与窄屏共用同一张卡。此前桌面端是 Bento 三宫格、窄屏是一大两窄的
-    // 轮播，两种观感都跟「每日推荐」对不上，统一成三层扇形封面 + 离散跳变滑动。
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: _kSectionTitleGap),
-          child: Text(
-            '每日推荐',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ),
-        SwipeRecommendCard(
-          tracks: cachedRandomTracks,
-          onPlay: (track) async {
-            await checkLoginStatus();
-            PlayerService().playTrack(track);
-          },
-        ),
-      ],
     );
   }
 

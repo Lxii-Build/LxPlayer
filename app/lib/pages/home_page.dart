@@ -1485,7 +1485,6 @@ class _HomePageState extends State<HomePage>
             ),
           ] else ...[
             ChartsTab(
-              cachedRandomTracks: _cachedRandomTracks,
               checkLoginStatus: _checkLoginStatus,
               guessYouLikeFuture: _guessYouLikeFuture,
               onRefresh: _onRefresh,
@@ -2140,7 +2139,6 @@ class _HomePageState extends State<HomePage>
             ),
           ] else ...[
             ChartsTab(
-              cachedRandomTracks: _cachedRandomTracks,
               checkLoginStatus: _checkLoginStatus,
               guessYouLikeFuture: _guessYouLikeFuture,
               onRefresh: _onRefresh,

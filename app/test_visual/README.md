@@ -21,6 +21,8 @@ flutter test test_visual --update-goldens
 | `visual_recommend_test.dart` | `goldens/recommend_card.png` | 首页推荐卡整体 |
 | `visual_home_sections_test.dart` | `goldens/lx_surface_clipped.png` | 统一表面 + `clipBehavior`：内容齐边铺满时的裁剪形态（首页下方区块用的就是这套） |
 | `visual_lyric_test.dart` | `goldens/lyric_window.png` | 当前歌词窗口 |
+| `visual_minimal_lyric_flow_test.dart` | `goldens/minimal_lyric_flow_phone.png` | 极简歌词流布局 · 手机竖屏（390×844）：上半屏封面 + 下半屏歌词 |
+| `visual_minimal_lyric_flow_test.dart` | `goldens/minimal_lyric_flow_desktop.png` | 极简歌词流布局 · 桌面大窗口（1280×800）：用于审阅宽屏下「封面占上半屏」的比例（宽屏时封面自动收为居中正方形） |
 
 > 首页推荐卡**下方**的四个区块（新歌列表 / 歌单网格 / 私人FM / 榜单卡）没有各自的
 > golden：它们的内容都要加载图片（`Image.network` / `CachedNetworkImage`），headless

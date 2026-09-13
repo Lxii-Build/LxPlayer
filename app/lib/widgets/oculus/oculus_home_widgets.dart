@@ -10,6 +10,8 @@ import '../../models/track.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../pages/favorites_page.dart';
 import '../../pages/my_page/netease_library_playlists_page.dart';
+// 与移动端 / 桌面端共用同一份新歌解析（旧式 artists/album 键、缺字段回落）。
+import '../../pages/home_page/newsong_item.dart';
 import '../../pages/my_page/netease_library_albums_page.dart';
 import '../../pages/my_page/netease_library_artists_page.dart';
 import '../../pages/my_page/netease_library_djs_page.dart';
@@ -844,18 +846,15 @@ class OculusNewSongsWidget extends StatelessWidget {
         itemCount: list.length,
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
-          final song = list[index];
-          // 数据解析兼容
-          final s = song['song'] ?? song;
-          final al = (s['al'] ?? s['album'] ?? {}) as Map<String, dynamic>;
-          final ar = (s['ar'] ?? s['artists'] ?? []) as List<dynamic>;
-          final pic = (al['picUrl'] ?? '').toString();
-          final name = s['name']?.toString() ?? '';
-          final artists = ar.map((e) => (e as Map<String, dynamic>)['name']?.toString() ?? '').where((e) => e.isNotEmpty).join(' / ');
+          // 与移动端 / 桌面端共用同一份解析（旧/新式键、缺字段回落），杜绝分叉。
+          final item = NewsongItem.fromJson(list[index]);
+          final pic = item.picUrl;
+          final name = item.name;
+          final artists = item.artists;
 
           return GestureDetector(
             onTap: () async {
-               final track = _convertToTrack(s);
+               final track = item.toTrack();
                // 简单的单曲播放逻辑，也可以扩展为播放列表
                await PlayerService().playTrack(track);
             },
@@ -951,19 +950,6 @@ class OculusNewSongsWidget extends StatelessWidget {
           );
         },
       ),
-    );
-  }
-
-  Track _convertToTrack(Map<String, dynamic> song) {
-    final al = (song['al'] ?? song['album'] ?? {}) as Map<String, dynamic>;
-    final ar = (song['ar'] ?? song['artists'] ?? []) as List<dynamic>;
-    return Track(
-      id: song['id'] ?? 0,
-      name: song['name']?.toString() ?? '',
-      artists: ar.map((e) => (e as Map<String, dynamic>)['name']?.toString() ?? '').where((e) => e.isNotEmpty).join(' / '),
-      album: al['name']?.toString() ?? '',
-      picUrl: al['picUrl']?.toString() ?? '',
-      source: MusicSource.netease,
     );
   }
 }
