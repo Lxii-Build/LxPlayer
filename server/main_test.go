@@ -16,7 +16,16 @@ func newTestServer(t *testing.T) *server {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	return &server{db: db, jwtSecret: []byte("test-secret")}
+	store, err := newSettingsStore(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &server{
+		db:            db,
+		jwtSecret:     []byte("test-secret"),
+		settingsStore: store,
+		limiter:       newRateLimiter(),
+	}
 }
 
 func doJSON(t *testing.T, h http.Handler, method, path, body, token string) *httptest.ResponseRecorder {
