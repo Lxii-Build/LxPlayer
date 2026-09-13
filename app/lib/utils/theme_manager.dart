@@ -76,10 +76,9 @@ class ThemeManager extends ChangeNotifier {
   Color _seedColor = Colors.deepPurple;
   bool _followSystemColor = true; // 默认跟随系统主题色
   Color? _systemColor; // 系统主题色缓存
-  ThemeFramework _themeFramework = (Platform.isWindows || Platform.isMacOS || Platform.isLinux) 
-      ? ThemeFramework.fluent 
-      : ThemeFramework.material; // 桌面端默认使用 Fluent UI，移动端默认使用 Material 3
-  MobileThemeFramework _mobileThemeFramework = MobileThemeFramework.cupertino; // 移动端默认使用 iOS 风格
+  // #3: 用户要求只保留 Android (Material) 风格，默认值改为 Material
+  ThemeFramework _themeFramework = ThemeFramework.material;
+  MobileThemeFramework _mobileThemeFramework = MobileThemeFramework.material;
   WindowEffect _windowEffect = WindowEffect.disabled; // 窗口材质效果
   bool _isApplyingWindowEffect = false; // 防止并发应用导致插件内部状态错误
   bool _isWindows11OrLater = false; // 是否为 Windows 11 或更高版本
@@ -437,24 +436,11 @@ class ThemeManager extends ChangeNotifier {
       final colorValue = storage.getInt('seed_color') ?? Colors.deepPurple.value;
       _seedColor = Color(colorValue);
 
-      // 加载桌面主题框架（桌面端默认为 Fluent UI，移动端默认为 Material）
-      final savedFrameworkIndex = storage.getInt('theme_framework');
-      if (savedFrameworkIndex != null && savedFrameworkIndex >= 0 && savedFrameworkIndex < ThemeFramework.values.length) {
-        _themeFramework = ThemeFramework.values[savedFrameworkIndex];
-      } else {
-        // 用户未设置过，使用平台默认值
-        _themeFramework = (Platform.isWindows || Platform.isMacOS || Platform.isLinux) 
-            ? ThemeFramework.fluent 
-            : ThemeFramework.material;
-      }
+      // #3: 用户要求只保留 Material 风格——忽略已保存的非 Material 值
+      _themeFramework = ThemeFramework.material;
 
-      // 加载移动端主题框架（默认为 Cupertino iOS 风格）
-      final savedMobileFrameworkIndex = storage.getInt('mobile_theme_framework');
-      if (savedMobileFrameworkIndex != null && savedMobileFrameworkIndex >= 0 && savedMobileFrameworkIndex < MobileThemeFramework.values.length) {
-        _mobileThemeFramework = MobileThemeFramework.values[savedMobileFrameworkIndex];
-      } else {
-        _mobileThemeFramework = MobileThemeFramework.cupertino;
-      }
+      // #3: 同上，移动端也强制 Material
+      _mobileThemeFramework = MobileThemeFramework.material;
 
       // 检测 Windows 版本
       if (Platform.isWindows) {
@@ -603,11 +589,13 @@ class ThemeManager extends ChangeNotifier {
   }
 
   /// 设置桌面端主题框架
+  /// #3: 用户要求只保留 Material 风格，非 Material 值将被忽略
   void setThemeFramework(ThemeFramework framework) {
+    if (framework != ThemeFramework.material) return;
     if (_themeFramework != framework) {
       _themeFramework = framework;
       _saveThemeFramework();
-      
+
       // 切换到 Fluent UI 时，自动重置为桌面布局模式
       // 因为 Fluent UI 主要用于桌面体验，目前布局调整逻辑主要支持 Windows
       if (framework == ThemeFramework.fluent && (Platform.isWindows || Platform.isMacOS || Platform.isLinux)) {
@@ -617,7 +605,7 @@ class ThemeManager extends ChangeNotifier {
           print('🖥️ [ThemeManager] 切换到 Fluent UI，自动重置为桌面布局模式');
         }
       }
-      
+
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         await _applyWindowEffectInternal();
         notifyListeners();
@@ -626,7 +614,9 @@ class ThemeManager extends ChangeNotifier {
   }
 
   /// 设置移动端主题框架
+  /// #3: 用户要求只保留 Material 风格，非 Material 值将被忽略
   void setMobileThemeFramework(MobileThemeFramework framework) {
+    if (framework != MobileThemeFramework.material) return;
     if (_mobileThemeFramework != framework) {
       _mobileThemeFramework = framework;
       _saveMobileThemeFramework();

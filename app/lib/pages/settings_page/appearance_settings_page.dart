@@ -145,21 +145,6 @@ class _AppearanceSettingsContentState extends State<AppearanceSettingsContent> {
           ],
         ),
 
-        // 移动端专属设置
-        if (Platform.isAndroid || Platform.isIOS)
-          MD3SettingsSection(
-            title: '界面风格',
-            children: [
-              MD3SettingsTile(
-                leading: const Icon(Icons.phone_iphone_outlined),
-                title: '界面风格',
-                subtitle: _getMobileThemeFrameworkSubtitle(),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showMobileThemeFrameworkDialog(),
-              ),
-            ],
-          ),
-
         // 播放器设置
         MD3SettingsSection(
           title: '播放器',
@@ -203,15 +188,9 @@ class _AppearanceSettingsContentState extends State<AppearanceSettingsContent> {
           MD3SettingsSection(
             title: '桌面端',
             children: [
-              MD3SettingsTile(
-                leading: const Icon(Icons.layers_outlined),
-                title: '桌面主题样式',
-                subtitle: _getThemeFrameworkSubtitle(),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _showThemeFrameworkDialog(),
-              ),
-              MD3SettingsTile(
-                leading: const Icon(Icons.view_quilt_outlined),
+            // 布局模式（#3: 桌面主题样式选择已移除，只保留 Material）
+            MD3SettingsTile(
+              leading: const Icon(Icons.view_quilt_outlined),
                 title: '布局模式',
                 subtitle: LayoutPreferenceService().getLayoutDescription(),
                 trailing: const Icon(Icons.chevron_right),
@@ -1247,14 +1226,27 @@ class _AppearanceSettingsContentState extends State<AppearanceSettingsContent> {
   }
 
   void _showWindowBackgroundDialog() {
-    fluent_ui.showDialog(
-      context: context,
-      builder: (context) => WindowBackgroundDialog(
-        onChanged: () {
-          if (mounted) setState(() {});
-        },
-      ),
-    );
+    // #5: 修复窗口背景在非 Fluent 模式下崩溃——fluent_ui.showDialog 需要 FluentTheme 祖先
+    final isFluentUI = ThemeManager().isDesktopFluentUI;
+    if (isFluentUI) {
+      fluent_ui.showDialog(
+        context: context,
+        builder: (context) => WindowBackgroundDialog(
+          onChanged: () {
+            if (mounted) setState(() {});
+          },
+        ),
+      );
+    } else {
+      showDialog(
+        context: context,
+        builder: (context) => WindowBackgroundDialog(
+          onChanged: () {
+            if (mounted) setState(() {});
+          },
+        ),
+      );
+    }
   }
 
   void _showMobileThemeFrameworkDialog() {

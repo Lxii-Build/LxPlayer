@@ -50,23 +50,14 @@ class _MobileSetupPageState extends State<MobileSetupPage> {
   
   /// 检查主题是否已配置过（通过检查本地存储）
   void _checkThemeConfigured() {
+    // #3: 用户要求只保留 Material 风格，跳过主题选择步骤
     final storage = PersistentStorageService();
-    final hasThemeConfig = storage.containsKey('mobile_theme_framework');
     final termsAccepted = storage.getBool('terms_accepted') ?? false;
 
-    if (hasThemeConfig) {
-      if (!termsAccepted) {
-        setState(() {
-          _themeSelected = true;
-          _currentStep = 1; // 去协议页
-        });
-      } else {
-        setState(() {
-          _themeSelected = true;
-          _currentStep = 2; // 去中转页
-        });
-      }
-    }
+    setState(() {
+      _themeSelected = true;
+      _currentStep = termsAccepted ? 2 : 1;
+    });
   }
 
   @override
