@@ -14,7 +14,7 @@ import 'mobile_player_components/mobile_player_controls.dart';
 import 'mobile_player_components/mobile_player_control_center.dart';
 import 'mobile_player_components/mobile_player_karaoke_lyric.dart';
 import 'mobile_player_components/mobile_player_fluid_cloud_layout.dart';
-import 'mobile_player_components/mobile_player_classic_layout.dart';
+import 'player_components/minimal_lyric_flow_layout.dart';
 import 'mobile_player_components/mobile_player_dialogs.dart';
 import 'mobile_player_components/mobile_player_settings_sheet.dart';
 import 'player_components/player_immersive_layout.dart';
@@ -369,6 +369,26 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> with TickerProvider
     });
   }
 
+  /// 极简顶部栏：只保留一个「收起播放页」按钮。
+  /// 切歌/播放/进度等控制全部收进「点击封面」弹出的操作面板，平时不占画面。
+  Widget _buildMinimalTopBar(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: IconButton(
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Colors.white,
+            size: 30,
+          ),
+          onPressed: () => Navigator.pop(context),
+          tooltip: '收起',
+        ),
+      ),
+    );
+  }
+
   /// 构建流体云全屏布局（动态背景模式）
   /// 使用新的 MobilePlayerFluidCloudLayout，不再需要二级歌词页面
   Widget _buildAppleMusicStyleLayout(BuildContext context, BoxConstraints constraints) {
@@ -473,15 +493,33 @@ class _MobilePlayerPageState extends State<MobilePlayerPage> with TickerProvider
                       )
                     : _buildAppleMusicStyleLayout(context, const BoxConstraints())
               else ...[
-                // 标准布局模式：原有背景 + Safe Area
+                // 极简歌词流（defaultStyle）：封面占上半屏、歌名/歌手与封面渐变融合、
+                // 歌词从文字区下方一直铺满到屏幕底部（避开手势区）。
+                // 控制键默认隐藏，改为点击封面唤出操作弹层。
                 const MobilePlayerBackground(),
-                SafeArea(
-                  child: MobilePlayerClassicLayout(
+                MinimalLyricFlowLayout(
+                  lyrics: _lyrics,
+                  currentLyricIndex: _currentLyricIndex,
+                  showTranslation: _showTranslation,
+                  lyricsPanel: MobilePlayerKaraokeLyric(
                     lyrics: _lyrics,
                     currentLyricIndex: _currentLyricIndex,
-                    onBackPressed: () => Navigator.pop(context),
-                    onPlaylistPressed: () => MobilePlayerDialogs.showPlaylistBottomSheet(context),
+                    showTranslation: _showTranslation,
+                    fillHeight: true,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MobileLyricPage(),
+                      ),
+                    ),
                   ),
+                  topBar: _buildMinimalTopBar(context),
+                  onPlaylistPressed: () =>
+                      MobilePlayerDialogs.showPlaylistBottomSheet(context),
+                  onSleepTimerPressed: () =>
+                      MobilePlayerDialogs.showSleepTimer(context),
+                  onTranslationToggle: () =>
+                      setState(() => _showTranslation = !_showTranslation),
                 ),
               ],
 

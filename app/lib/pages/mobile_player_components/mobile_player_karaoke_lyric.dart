@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../services/player_service.dart';
 import '../../models/lyric_line.dart';
+import '../player_components/lyric_window_metrics.dart';
 
 /// 移动端卡拉OK样式歌词组件
 /// 支持从左到右的填充效果、上下滚动和手动滑动选择
@@ -11,12 +12,21 @@ class MobilePlayerKaraokeLyric extends StatefulWidget {
   final VoidCallback onTap;
   final bool showTranslation;
 
+  /// 是否铺满父级给到的全部高度。
+  ///
+  /// - `false`（默认，旧行为）：固定三行高度，用于经典布局里的 300px 占位分支；
+  /// - `true`：用共享的 [resolveLyricWindowMetrics] 按**可用高度反推行数与行高**，
+  ///   把歌词铺满到容器底部（供极简歌词流布局使用）。行数不足时行高自动回填，
+  ///   数学上不可能溢出，与桌面端 `PlayerKaraokeLyricsPanel` 同一套高度契约。
+  final bool fillHeight;
+
   const MobilePlayerKaraokeLyric({
     super.key,
     required this.lyrics,
     required this.currentLyricIndex,
     required this.onTap,
     required this.showTranslation,
+    this.fillHeight = false,
   });
 
   @override
@@ -24,6 +34,16 @@ class MobilePlayerKaraokeLyric extends StatefulWidget {
 }
 
 class _MobilePlayerKaraokeLyricState extends State<MobilePlayerKaraokeLyric> with TickerProviderStateMixin {
+  /// 铺满模式下的排版参数：与桌面端 `LyricLayoutSpec.standard` 同源（仅字号按移动端略调），
+  /// 保证「测量」和「渲染」用的是同一份行高系数 `1.4`，不会因为字体度量差异而算错。
+  static const LyricLayoutSpec _fillSpec = LyricLayoutSpec(
+    maxVisibleLines: 8,
+    currentFontSize: 20,
+    otherFontSize: 16,
+    currentTranslationFontSize: 13,
+    otherTranslationFontSize: 12,
+  );
+
   int? _selectedLyricIndex; // 手动选择的歌词索引
   bool _isManualMode = false; // 是否处于手动模式
   Timer? _autoResetTimer; // 自动回退定时器
@@ -122,9 +142,14 @@ class _MobilePlayerKaraokeLyricState extends State<MobilePlayerKaraokeLyric> wit
         const int totalVisibleLines = 3;
         const double lineHeight = 30.0;
         const double translationHeight = 22.0;
-        final double itemHeight = lineHeight + (widget.showTranslation ? translationHeight : 0);
-        final double containerHeight = totalVisibleLines * itemHeight + 2.0; // 轻微冗余，避免字体度量导致的溢出
-        
+        final double fixedItemHeight = lineHeight + (widget.showTranslation ? translationHeight : 0);
+        final double fixedContainerHeight = totalVisibleLines * fixedItemHeight + 2.0; // 轻微冗余，避免字体度量导致的溢出
+
+        // 铺满模式：容器直接吃满父级约束高度，行数/行高改由可用高度反推
+        // （见 _buildKaraokeLyricStream）。旧模式保持固定三行不变。
+        final bool fill = widget.fillHeight && constraints.maxHeight.isFinite;
+        final double containerHeight = fill ? constraints.maxHeight : fixedContainerHeight;
+
         return Stack(
           children: [
             // 主要歌词区域
@@ -176,12 +201,14 @@ class _MobilePlayerKaraokeLyricState extends State<MobilePlayerKaraokeLyric> wit
                 _accumulatedDelta = 0.0;
               },
               child: Container(
-                // 固定区域高度以容纳三行（带或不带译文）
+                // 固定区域高度以容纳三行（带或不带译文）；铺满模式下即为父级可用高度
                 height: containerHeight,
                 padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.08),
                 child: widget.lyrics.isEmpty
                     ? _buildNoLyric(screenWidth)
-                    : _buildKaraokeLyricLines(screenWidth),
+                    : (fill
+                        ? _buildKaraokeLyricStream(screenWidth, containerHeight)
+                        : _buildKaraokeLyricLines(screenWidth)),
               ),
             ),
             
@@ -311,6 +338,108 @@ class _MobilePlayerKaraokeLyricState extends State<MobilePlayerKaraokeLyric> wit
       },
       child: Column(
         key: ValueKey(displayIndex),
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: rows,
+      ),
+    );
+  }
+
+  /// 铺满高度模式：把可用高度交给共享的 [resolveLyricWindowMetrics]，
+  /// **由内容所需行高反推能显示几行**，再把剩余空间均分回每一行。
+  ///
+  /// 与桌面端 `PlayerKaraokeLyricsPanel` 用的是同一套高度契约：行数向下取整，
+  /// 因此 `visibleLines * itemHeight <= availableHeight` 恒成立，不会有黄黑条纹。
+  Widget _buildKaraokeLyricStream(double screenWidth, double availableHeight) {
+    final bool withTranslation = hasTranslationContent(
+      lyrics: widget.lyrics,
+      showTranslation: widget.showTranslation,
+    );
+    final LyricWindowMetrics metrics = resolveLyricWindowMetrics(
+      availableHeight: availableHeight,
+      withTranslation: withTranslation,
+      spec: _fillSpec,
+    );
+
+    final int displayIndex = _selectedLyricIndex ?? widget.currentLyricIndex;
+    final int startIndex = displayIndex - metrics.currentLinePosition;
+
+    final double currentFontSize = _fillSpec.currentFontSize;
+    final double otherFontSize = _fillSpec.otherFontSize;
+
+    final List<Widget> rows = <Widget>[];
+    for (int i = 0; i < metrics.visibleLines; i++) {
+      final int lyricIndex = startIndex + i;
+      if (lyricIndex < 0 || lyricIndex >= widget.lyrics.length) {
+        // 空行占位：与歌词行共用同一行高，滚动时窗口不跳动。
+        rows.add(
+          ConstrainedBox(
+            key: ValueKey('empty_$i'),
+            constraints: BoxConstraints(minHeight: metrics.itemHeight),
+            child: const SizedBox(width: double.infinity, height: 0),
+          ),
+        );
+        continue;
+      }
+
+      final LyricLine lyric = widget.lyrics[lyricIndex];
+      final bool isCurrent = lyricIndex == displayIndex;
+      final bool isActuallyPlaying = lyricIndex == widget.currentLyricIndex;
+      final bool hasTranslation =
+          widget.showTranslation &&
+          lyric.translation != null &&
+          lyric.translation!.trim().isNotEmpty;
+
+      rows.add(
+        ConstrainedBox(
+          key: ValueKey('lyric_$lyricIndex'),
+          constraints: BoxConstraints(minHeight: metrics.itemHeight),
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                isCurrent
+                    ? _buildKaraokeLyricLine(lyric, currentFontSize, isActuallyPlaying)
+                    : _buildNormalLyricLine(lyric, otherFontSize, false),
+                if (hasTranslation)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: _buildTranslationLine(
+                      lyric.translation!,
+                      isCurrent
+                          ? _fillSpec.currentTranslationFontSize
+                          : _fillSpec.otherTranslationFontSize,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
+        return Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            if (currentChild != null) currentChild,
+          ],
+        );
+      },
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        final offsetAnimation = Tween<Offset>(
+          begin: const Offset(0.0, 0.12),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+        ));
+        return SlideTransition(position: offsetAnimation, child: child);
+      },
+      child: Column(
+        key: ValueKey(displayIndex),
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: rows,
       ),

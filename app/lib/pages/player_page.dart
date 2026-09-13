@@ -7,19 +7,16 @@ import '../services/layout_preference_service.dart';
 import '../services/lyric_style_service.dart';
 import '../utils/theme_manager.dart';
 import '../models/lyric_line.dart';
-import '../models/track.dart';
 import '../models/song_detail.dart';
 import '../utils/lyric_parser.dart';
 import 'mobile_player_page.dart';
 import 'player_components/player_window_controls.dart';
 import 'player_components/player_background.dart';
-import 'player_components/player_song_info.dart';
-import 'player_components/player_lyrics_panel.dart';
 import 'player_components/player_karaoke_lyrics_panel.dart';
 import 'player_components/player_fluid_cloud_lyrics_panel.dart';
 import 'player_components/player_fluid_cloud_layout.dart'; // 导入新布局
 import 'player_components/player_immersive_layout.dart'; // 导入沉浸样式布局
-import 'player_components/player_controls.dart';
+import 'player_components/minimal_lyric_flow_layout.dart'; // 极简歌词流布局
 import 'player_components/player_playlist_panel.dart';
 import 'player_components/player_control_center.dart';
 import 'player_components/player_dialogs.dart';
@@ -435,55 +432,25 @@ class _PlayerPageState extends State<PlayerPage> with WindowListener, TickerProv
                 children: [
                   // 背景层
                   const PlayerBackground(),
-                  
-                  // 主要内容区域
-                  SafeArea(
-                    child: Column(
-                      children: [
-                        // 顶部窗口控制
-                        PlayerWindowControls(
-                          isMaximized: _isMaximized,
-                          onBackPressed: () => Navigator.pop(context),
-                          onPlaylistPressed: _togglePlaylist,
-                        ),
-                        
-                        // 左右分栏内容区域
-                        Expanded(
-                          child: Row(
-                            children: [
-                              // 左侧：歌曲信息
-                              Expanded(
-                                flex: 5,
-                                child: const PlayerSongInfo(),
-                              ),
-                              
-                              // 右侧：歌词
-                              Expanded(
-                                flex: 4,
-                                child: _buildLyricPanel(),
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        // 底部控制区域
-                        AnimatedBuilder(
-                          animation: PlayerService(),
-                          builder: (context, child) {
-                            return PlayerControls(
-                              player: PlayerService(),
-                              onVolumeControlPressed: _toggleControlCenter,
-                              onPlaylistPressed: _togglePlaylist,
-                              onSleepTimerPressed: () => PlayerDialogs.showSleepTimer(context),
-                              onAddToPlaylistPressed: (track) => PlayerDialogs.showAddToPlaylist(context, track),
-                              lyrics: _lyrics,
-                              showTranslation: _showTranslation,
-                              onTranslationToggle: _toggleTranslation,
-                            );
-                          },
-                        ),
-                      ],
+
+                  // 极简歌词流（defaultStyle）：
+                  //  - 封面占上半屏（按比例切分，不写死像素）
+                  //  - 歌名/歌手叠在封面底边的渐隐带上，与封面自然融合
+                  //  - 歌词从文字区下方一直铺满到窗口底部
+                  //  - 切歌/播放/进度等控制键全部隐藏，改为点击封面唤出操作面板
+                  MinimalLyricFlowLayout(
+                    lyrics: _lyrics,
+                    currentLyricIndex: _currentLyricIndex,
+                    showTranslation: _showTranslation,
+                    lyricsPanel: _buildLyricPanel(),
+                    topBar: PlayerWindowControls(
+                      isMaximized: _isMaximized,
+                      onBackPressed: () => Navigator.pop(context),
+                      onPlaylistPressed: _togglePlaylist,
                     ),
+                    onPlaylistPressed: _togglePlaylist,
+                    onSleepTimerPressed: () => PlayerDialogs.showSleepTimer(context),
+                    onTranslationToggle: _toggleTranslation,
                   ),
                 ],
               ),
