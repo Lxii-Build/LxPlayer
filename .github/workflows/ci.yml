@@ -93,19 +93,23 @@ jobs:
       - name: 单元测试
         run: flutter test --reporter expanded
 
-      # release 只打 ARM 两个 ABI。
+      # release 按 ABI 分片产出，每台设备只下载自己那一份。
       #
-      # 为什么去掉 x86_64：它是**模拟器专用**架构，真实 Android 设备（手机/平板/电视）
-      # 全部是 ARM。实测 release APK 里 lib/x86_64 一个目录就占 50.3MB
-      # （libapp.so + libflutter.so + libmpv.so + libbarhopper 各一份），
-      # 对真机用户是纯粹的体积浪费——这部分永远不会被加载。
+      # 为什么这是第一优先级：一个通用 APK 里 arm64-v8a 与 armeabi-v7a 各占约一半
+      # （实测 36.3MiB + 32.7MiB，合计占包体 91%），而**任何一台手机只会用其中一个**，
+      # 另一个是纯陪跑。分片不删任何架构、不砍任何功能，只是不再把两份都塞给同一台设备。
       #
-      # 为什么不连带去掉 armeabi-v7a：它覆盖老旧的 32 位设备，属产品兼容性取舍，
-      # 不在这里单方面决定。
-      #
-      # debug 保持全 ABI（含 x86_64），否则 x86_64 模拟器上没法调试。
+      # --target-platform 限定只产出 ARM 两片（x86_64 是模拟器专用，真机全是 ARM）。
+      # --obfuscate + --split-debug-info：把调试符号与标识符名从 Dart AOT 快照
+      # （libapp.so，各 ABI 约 14-16MiB）里剥离出去，符号另存为 artifact 备查。
+      # 崩溃栈要还原就把对应 symbol 文件喂给 `flutter symbolize`。
       - name: 构建 release APK
-        run: flutter build apk --release --target-platform android-arm,android-arm64
+        run: |
+          flutter build apk --release \
+            --split-per-abi \
+            --target-platform android-arm,android-arm64 \
+            --obfuscate \
+            --split-debug-info=build/symbols
 
       - name: 构建 debug APK
         run: flutter build apk --debug
@@ -113,14 +117,14 @@ jobs:
       - name: 报告 APK 体积构成
         run: |
           set -euo pipefail
-          RELEASE_APK=build/app/outputs/flutter-apk/app-release.apk
-          DEBUG_APK=build/app/outputs/flutter-apk/app-debug.apk
+          APK_DIR=build/app/outputs/flutter-apk
+          DEBUG_APK=$APK_DIR/app-debug.apk
           {
             echo "## APK 体积"
             echo ""
             echo "| 变体 | 字节 | MiB |"
             echo "| --- | --- | --- |"
-            for pair in "release:$RELEASE_APK" "debug:$DEBUG_APK"; do
+            for pair in "debug:$DEBUG_APK"; do
               name=${pair%%:*}
               path=${pair#*:}
               if [ -f "$path" ]; then
@@ -131,14 +135,26 @@ jobs:
                 echo "| $name | 缺失 | - |"
               fi
             done
+            # release 现在是按 ABI 分片的多个文件，逐个列出。
+            for path in $APK_DIR/*-release.apk; do
+              [ -f "$path" ] || continue
+              name=$(basename "$path" .apk)
+              bytes=$(stat -c%s "$path")
+              mib=$(awk -v b="$bytes" 'BEGIN{printf "%.1f", b/1048576}')
+              echo "| $name | $bytes | $mib |"
+            done
             echo ""
-            echo "### release 包内各 ABI 占用"
+            echo "### 各 release 分片内的 ABI 占用"
             echo ""
             echo '```'
-            unzip -l "$RELEASE_APK" 2>/dev/null | awk '
-              $4 ~ /^lib\// { n=split($4,a,"/"); sz[a[2]]+=$1 }
-              END { for (k in sz) printf "%-16s %10d B  %6.1f MiB\n", k, sz[k], sz[k]/1048576 }
-            ' | sort -k2 -n -r
+            for path in $APK_DIR/*-release.apk; do
+              [ -f "$path" ] || continue
+              echo "-- $(basename "$path")"
+              unzip -l "$path" 2>/dev/null | awk '
+                $4 ~ /^lib\// { n=split($4,a,"/"); sz[a[2]]+=$1 }
+                END { for (k in sz) printf "   %-16s %10d B  %6.1f MiB\n", k, sz[k], sz[k]/1048576 }
+              ' | sort -k2 -n -r
+            done
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
 
@@ -151,15 +167,26 @@ jobs:
             exit 1
           fi
 
-          RELEASE_APK=build/app/outputs/flutter-apk/app-release.apk
-          DEBUG_APK=build/app/outputs/flutter-apk/app-debug.apk
-          for f in "$RELEASE_APK" "$DEBUG_APK"; do
-            if [ ! -f "$f" ]; then
-              echo "::error::缺少 $f"
-              find build/app/outputs -name '*.apk' | head
-              exit 1
-            fi
+          # release 现在是按 ABI 分片的多个 APK，debug 仍是一个。
+          # **每一个**都必须与 debug 同指纹，否则「可互相覆盖安装」这个前提就不成立。
+          APK_DIR=build/app/outputs/flutter-apk
+          DEBUG_APK=$APK_DIR/app-debug.apk
+          if [ ! -f "$DEBUG_APK" ]; then
+            echo "::error::缺少 $DEBUG_APK"
+            find build/app/outputs -name '*.apk' | head
+            exit 1
+          fi
+
+          RELEASE_APKS=""
+          for f in $APK_DIR/*-release.apk; do
+            [ -f "$f" ] || continue
+            RELEASE_APKS="$RELEASE_APKS $f"
           done
+          if [ -z "$RELEASE_APKS" ]; then
+            echo "::error::没有找到任何 release APK（预期 $APK_DIR/*-release.apk）"
+            find build/app/outputs -name '*.apk' | head
+            exit 1
+          fi
 
           # 直接抓 64 位十六进制摘要，不按字段切分——
           # 按标签切分会把「certificate SHA-256 digest」当成摘要本身，
@@ -173,25 +200,31 @@ jobs:
           }
 
           DEBUG_SHA=$(sha256_of "$DEBUG_APK")
-          RELEASE_SHA=$(sha256_of "$RELEASE_APK")
-
-          for pair in "debug:$DEBUG_SHA" "release:$RELEASE_SHA"; do
-            name=${pair%%:*}
-            value=${pair#*:}
-            if ! printf '%s' "$value" | grep -qE '^[0-9A-F]{64}$'; then
-              echo "::error::$name 的 SHA-256 提取失败（得到 '$value'）"
-              "$APKSIGNER" verify --print-certs "$DEBUG_APK" || true
-              exit 1
-            fi
-          done
-
-          echo "debug   SHA-256: $DEBUG_SHA"
-          echo "release SHA-256: $RELEASE_SHA"
-
-          if [ "$DEBUG_SHA" != "$RELEASE_SHA" ]; then
-            echo "::error::debug 与 release 签名不一致：$DEBUG_SHA vs $RELEASE_SHA"
+          if ! printf '%s' "$DEBUG_SHA" | grep -qE '^[0-9A-F]{64}$'; then
+            echo "::error::debug 的 SHA-256 提取失败（得到 '$DEBUG_SHA'）"
+            "$APKSIGNER" verify --print-certs "$DEBUG_APK" || true
             exit 1
           fi
+          echo "debug   SHA-256: $DEBUG_SHA"
+
+          ROWS=""
+          MISMATCH=0
+          for f in $RELEASE_APKS; do
+            name=$(basename "$f" .apk)
+            sha=$(sha256_of "$f")
+            if ! printf '%s' "$sha" | grep -qE '^[0-9A-F]{64}$'; then
+              echo "::error::$name 的 SHA-256 提取失败（得到 '$sha'）"
+              "$APKSIGNER" verify --print-certs "$f" || true
+              exit 1
+            fi
+            echo "$name SHA-256: $sha"
+            ROWS="$ROWS| $name | \`$sha\` |"$'\n'
+            if [ "$sha" != "$DEBUG_SHA" ]; then
+              echo "::error::$name 与 debug 签名不一致：$sha vs $DEBUG_SHA"
+              MISMATCH=1
+            fi
+          done
+          [ "$MISMATCH" -eq 0 ] || exit 1
 
           EXPECTED_COMMITTED="39B3DA9AFBB9EBC70FBBF6BA75F1BC4FC2D63AA8569E1EFE7AFCB5F4F634B876"
           if [ "$DEBUG_SHA" = "$EXPECTED_COMMITTED" ]; then
@@ -203,21 +236,23 @@ jobs:
           {
             echo "## APK 签名指纹"
             echo ""
-            echo "**两个变体签名一致，来源：$SOURCE**"
+            echo "**debug 与全部 release 分片指纹一致，来源：$SOURCE**"
             echo ""
             echo "| 变体 | SHA-256 |"
             echo "| --- | --- |"
             echo "| debug | \`$DEBUG_SHA\` |"
-            echo "| release | \`$RELEASE_SHA\` |"
+            printf '%s' "$ROWS"
           } >> "$GITHUB_STEP_SUMMARY"
 
           echo "签名一致（$SOURCE）"
 
-      - name: 上传 release APK
+      # release 是按 ABI 分片的多个文件，整目录上传。
+      # 每台设备只需装自己架构那一个（现代手机用 arm64-v8a 那个）。
+      - name: 上传 release APK（按 ABI 分片）
         uses: actions/upload-artifact@v4
         with:
           name: lxplayer-release-${{ github.sha }}
-          path: app/build/app/outputs/flutter-apk/app-release.apk
+          path: app/build/app/outputs/flutter-apk/*-release.apk
           if-no-files-found: error
 
       - name: 上传 debug APK
@@ -225,6 +260,16 @@ jobs:
         with:
           name: lxplayer-debug-${{ github.sha }}
           path: app/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+
+      # --obfuscate 会把标识符名从 AOT 快照里去掉，所以崩溃栈必须靠这份符号还原。
+      # 不上传的话线上崩溃就只能看到一堆 a/b/c，等于自断排查手段。
+      # 用法：flutter symbolize -i <stack> -d <symbol 文件>
+      - name: 上传 Dart 调试符号（还原混淆后的崩溃栈用）
+        uses: actions/upload-artifact@v4
+        with:
+          name: lxplayer-symbols-${{ github.sha }}
+          path: app/build/symbols/
           if-no-files-found: error
 
   # 独立的视觉基线 job：**故意**与 android job 分开。

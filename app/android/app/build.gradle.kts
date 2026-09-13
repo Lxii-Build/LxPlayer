@@ -112,21 +112,18 @@ android {
             signingConfig = signingConfigs.getByName("unified")
             manifestPlaceholders["appName"] = "LxPlayer"
 
-            // release 只打 ARM 两个 ABI。
+            // release **刻意不设置 ndk.abiFilters**。
             //
-            // x86_64 是**模拟器专用**架构，真实 Android 设备全是 ARM；而 APK 里
-            // x86_64 那部分（libapp.so / libflutter.so / libmpv.so / libbarhopper.so）
-            // 永远不会被真机加载。实测该目录一度占 48.0MiB。
+            // 原因：release 走 `--split-per-abi`（见 .github/workflows/ci.yml），
+            // 由 Flutter 的 Gradle 插件去配置 `splits.abi`，再由
+            // `--target-platform android-arm,android-arm64` 决定产出哪两个分片。
+            // FlutterPlugin.kt 里明确写了「abiFilters 与 splits-per-abi 会配置冲突」，
+            // 所以这里不能再写 abiFilters，否则构建会失败。
             //
-            // 注意这里必须配合 android/gradle.properties 里的 disable-abi-filtering=true：
-            // 否则 Flutter 插件会把 defaultConfig 的 abiFilters 清空重设，把 x86_64 加回来。
-            // 也正因为那个开关，debug 变体不受影响、仍保留全 ABI，x86_64 模拟器照常调试。
-            //
-            // 保留 armeabi-v7a 是兼容性取舍：它覆盖老旧 32 位设备。
-            ndk {
-                abiFilters.clear()
-                abiFilters.addAll(listOf("arm64-v8a", "armeabi-v7a"))
-            }
+            // 代价（需知悉）：若本地直接 `flutter build apk --release`（不带 --split-per-abi），
+            // 因为上面 gradle.properties 关了插件的 ABI 过滤、这里又没设 abiFilters，
+            // 会打进全部 4 个 ABI、体积约 135MiB。**release 必须带 --split-per-abi**
+            // （CI 已经这么做），否则请自行加 --target-platform android-arm,android-arm64。
         }
     }
 }
