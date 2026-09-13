@@ -17,7 +17,7 @@ import 'home_page/bento_playlist_grid.dart';
 import 'home_page/horizontal_playlist_carousel.dart';
 import 'home_page/mixed_playlist_grid.dart';
 import 'home_page/newsong_cards.dart';
-import 'home_page/swipe_recommend_card.dart';
+import 'home_page/fluid_carousel_sections.dart';
 import 'home_page/mobile_personal_fm.dart';
 import 'home_page/mobile_playlist_grid.dart';
 import 'home_page/mobile_newsong_list.dart';
@@ -283,25 +283,25 @@ class _HomeForYouTabState extends State<HomeForYouTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const GreetingHeader(),
-              // 推荐卡支持左右滑动换歌：单卡 + 三层扇形封面 + 离散跳变。
-              // 拖动时卡片静止，松手越过阈值才整卡换一张。
+              // 今日推荐：流体形变轮播（#1）——当前卡完整尺寸 + 两侧竖条压扁。
               if (data.dailySongs.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: SwipeRecommendCard(
-                    tracks: data.dailySongs.map(neteaseSongToTrack).toList(),
-                    onPlay: (track) => _playRecommended(track, data.dailySongs),
-                    onIndexChanged: (index, direction) =>
-                        _onRecommendIndexChanged(direction, data.dailySongs),
-                    // 原来由 MobileDailyRecommendCard 承担的「查看全部」入口，
-                    // 去重后接到同一张卡片头部，功能入口不丢。
-                    onOpenDetail: () =>
-                        widget.onOpenDailyDetail?.call(data.dailySongs),
-                  ),
+                DailyRecommendCarousel(
+                  songs: data.dailySongs,
+                  onPlay: (track) => _playRecommended(track, data.dailySongs),
+                  onOpenDetail: () =>
+                      widget.onOpenDailyDetail?.call(data.dailySongs),
                 ),
               SizedBox(height: isCupertino ? 24 : 32),
               SectionTitle(title: '私人FM'),
               MobilePersonalFm(list: data.fm),
+              // 歌单榜：用流体轮播展示推荐歌单（#8）
+              if (data.dailyPlaylists.isNotEmpty) ...<Widget>[
+                SizedBox(height: isCupertino ? 24 : 32),
+                PlaylistChartCarousel(
+                  playlists: data.dailyPlaylists,
+                  onTap: (id) => widget.onOpenPlaylistDetail?.call(id),
+                ),
+              ],
               SizedBox(height: isCupertino ? 24 : 32),
               SectionTitle(title: '每日推荐歌单'),
               widget.playlistGridBuilder?.call(data.dailyPlaylists) ?? MobilePlaylistGrid(
