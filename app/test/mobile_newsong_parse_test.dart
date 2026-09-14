@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:lxplayer/pages/home_page/mobile_newsong_list.dart';
 import 'package:lxplayer/pages/home_page/newsong_item.dart';
-import 'package:lxplayer/widgets/lx_image_fallback.dart';
 
 /// 「个性化新歌」字段解析的回归测试。
 ///
