@@ -12,9 +12,9 @@ import '../../models/track.dart';
 ///
 /// 首页三处收口（[MobileNewsongList] / [NewsongCards] / `OculusNewSongsWidget`）
 /// 此前各抄了一份解析，并且都用 `(x ?? {}) as Map<String, dynamic>`——`{}` 会被
-/// 静态推断成 `Map<dynamic, dynamic>`，**一旦该项缺 `al` / `album` 就抛
-/// `_TypeError: type '_Map<dynamic, dynamic>' is not a subtype of type
-/// 'Map<String, dynamic>'`**，整行来不及渲染就失败（页面上就是「空盒子」）。
+/// 静态推断成 `Map<dynamic, dynamic>`，**一旦该项缺 `al` / `album` 就抛 `_TypeError`**
+/// （`_Map<dynamic, dynamic>` 不是 `Map<String, dynamic>` 的子类型），整行来不及渲染
+/// 就失败（页面上就是「空盒子」）。
 ///
 /// 这里把它收敛成**一份、永不抛异常、逐级回落**的实现：取不到的字段一律回落成
 /// 空串 / 空列表，取得到的按「内层 → 外层」优先级拼接。三处调用点共用它，

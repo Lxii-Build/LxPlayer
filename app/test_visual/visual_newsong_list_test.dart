@@ -81,8 +81,10 @@ void main() {
         ),
       ),
     );
-    // 图片走 errorWidget 是异步的，多 pump 一次让兜底落地。
-    await tester.pump(const Duration(milliseconds: 100));
+    // 图片走 errorWidget 是异步的；多 pump 一会儿让兜底（音符占位）落地，
+    // 否则快照时封面位还是空的，图里就看不出封面区域。
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
 
     await expectLater(
       find.byType(MobileNewsongList),
