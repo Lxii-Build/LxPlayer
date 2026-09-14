@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../../utils/page_visibility_notifier.dart';
 import '../../utils/theme_manager.dart';
 import '../../widgets/lx_image_fallback.dart';
+import '../../widgets/import_playlist_dialog.dart';
 
 /// 首页顶部胶囊 Tabs
 class HomeCapsuleTabs extends StatelessWidget {
@@ -663,9 +664,6 @@ class GuessYouLikeSection extends StatelessWidget {
         child: Column(
           children: [
             InkWell(
-              onTap: () {
-                // TODO: 跳转到推荐页面（暂无对应页面，见审计报告 B4；调试 print 已移除）
-              },
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
                 child: Row(
@@ -683,12 +681,6 @@ class GuessYouLikeSection extends StatelessWidget {
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
-                    const Spacer(),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 14,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    )
                   ],
                 ),
               ),
@@ -711,9 +703,6 @@ class GuessYouLikeSection extends StatelessWidget {
     final cardContent = Material(
       type: MaterialType.transparency,
       child: InkWell(
-        onTap: () {
-          // TODO: 跳转到推荐页面（暂无对应页面，见审计报告 B4；调试 print 已移除）
-        },
         child: Padding(
           padding: const EdgeInsets.all(12.0),
           child: Column(
@@ -775,34 +764,28 @@ class GuessYouLikeSection extends StatelessWidget {
         return Row(
           children: [
             // 大封面
-            InkWell(
-              onTap: () {
-                 // TODO: 跳转到推荐页面（暂无对应页面，见审计报告 B4；调试 print 已移除）
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Hero(
-                tag: 'guess_you_like_cover',
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: CachedNetworkImage(
-                      imageUrl: sampleTracks.first.picUrl,
-                      httpHeaders: getImageHeaders(sampleTracks.first.picUrl),
-                      width: 88,
-                      height: 88,
-                      fit: BoxFit.cover,
-                      errorWidget: (context, url, error) => const LxImageFallback(),
+            Hero(
+              tag: 'guess_you_like_cover',
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
                     ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: CachedNetworkImage(
+                    imageUrl: sampleTracks.first.picUrl,
+                    httpHeaders: getImageHeaders(sampleTracks.first.picUrl),
+                    width: 88,
+                    height: 88,
+                    fit: BoxFit.cover,
+                    errorWidget: (context, url, error) => const LxImageFallback(),
                   ),
                 ),
               ),
@@ -946,7 +929,7 @@ class GuessYouLikeSection extends StatelessWidget {
     if (isLegacy) {
       return InkWell(
         onTap: () {
-          // TODO: 引导用户导入歌单（暂无对应页面，见审计报告 B4；调试 print 已移除）
+          ImportPlaylistDialog.show(context);
         },
         child: Center(
           child: Padding(
@@ -966,7 +949,7 @@ class GuessYouLikeSection extends StatelessWidget {
     // Expressive 风格
     return InkWell(
       onTap: () {
-        // TODO: 引导用户导入歌单（暂无对应页面，见审计报告 B4；调试 print 已移除）
+        ImportPlaylistDialog.show(context);
       },
       child: Container(
         height: 88,

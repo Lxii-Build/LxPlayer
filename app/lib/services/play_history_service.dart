@@ -166,6 +166,35 @@ class PlayHistoryService extends ChangeNotifier {
     }
   }
 
+  /// 撤销删除：把条目放回删除前的原位置（用于历史页「撤销」）。
+  ///
+  /// [index] 为删除时记录下的原始索引，越界时收敛到列表末尾；
+  /// 若该条目已存在（重复撤销）则直接忽略，保证幂等。
+  Future<void> restoreHistoryItem(PlayHistoryItem item, int index) async {
+    try {
+      if (_history.contains(item)) {
+        return;
+      }
+
+      final insertIndex = index < 0 || index > _history.length
+          ? _history.length
+          : index;
+      _history.insert(insertIndex, item);
+
+      // 重新套用条数上限，避免撤销把列表撑过上限。
+      if (_history.length > _maxHistoryCount) {
+        _history = _history.sublist(0, _maxHistoryCount);
+      }
+
+      await _saveHistory();
+
+      print('↩️ [PlayHistoryService] 恢复播放记录: ${item.name}');
+      notifyListeners();
+    } catch (e) {
+      print('❌ [PlayHistoryService] 恢复播放记录失败: $e');
+    }
+  }
+
   /// 清空所有播放历史
   Future<void> clearHistory() async {
     try {

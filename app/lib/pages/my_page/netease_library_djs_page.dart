@@ -124,11 +124,8 @@ class _NeteaseLibraryDjsPageState extends State<NeteaseLibraryDjsPage> {
                         separatorBuilder: (context, index) => const Divider(indent: 84, height: 1),
                         itemBuilder: (context, index) {
                           final dj = _djs![index];
-                          return CupertinoButton(
+                          return Padding(
                             padding: const EdgeInsets.all(12),
-                            onPressed: () {
-                              // TODO: Navigate to DJ detail
-                            },
                             child: Row(
                               children: [
                                 ClipRRect(

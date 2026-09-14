@@ -8,7 +8,6 @@ import '../../services/player_service.dart';
 import '../../services/playlist_queue_service.dart';
 import '../../models/track.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../pages/favorites_page.dart';
 import '../../pages/my_page/netease_library_playlists_page.dart';
 // 与移动端 / 桌面端共用同一份新歌解析（旧式 artists/album 键、缺字段回落）。
 import '../../pages/home_page/newsong_item.dart';

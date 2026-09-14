@@ -886,15 +886,17 @@ class _HistoryPageState extends State<HistoryPage> with AutomaticKeepAliveClient
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 20),
               onPressed: () {
+                // 记录删除前的原始位置，供「撤销」精准放回（原为死按钮 TODO）。
+                final removedIndex = index;
                 _historyService.removeHistoryItem(item);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: const Text('已删除'),
-                    duration: const Duration(seconds: 1),
+                    duration: const Duration(seconds: 3),
                     action: SnackBarAction(
                       label: '撤销',
                       onPressed: () {
-                        // TODO: 实现撤销功能
+                        _historyService.restoreHistoryItem(item, removedIndex);
                       },
                     ),
                   ),
