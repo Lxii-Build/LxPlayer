@@ -173,13 +173,6 @@ class _AppearanceSettingsContentState extends State<AppearanceSettingsContent> {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _showPlayerBackgroundDialog(),
             ),
-            MD3SettingsTile(
-              leading: const Icon(Icons.photo_size_select_actual_outlined),
-              title: '窗口背景',
-              subtitle: _getWindowBackgroundSubtitle(),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () => _showWindowBackgroundDialog(),
-            ),
           ],
         ),
 
@@ -204,6 +197,15 @@ class _AppearanceSettingsContentState extends State<AppearanceSettingsContent> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _showWindowEffectDialog(),
                 ),
+              // 窗口背景（桌面端专属：依赖整个窗口，移动端无「窗口」概念。
+              // 原置于「播放器」分区且无平台守卫，导致移动端也能点进来但弹窗崩溃）
+              MD3SettingsTile(
+                leading: const Icon(Icons.photo_size_select_actual_outlined),
+                title: '窗口背景',
+                subtitle: _getWindowBackgroundSubtitle(),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _showWindowBackgroundDialog(),
+              ),
             ],
           ),
       ],
@@ -635,14 +637,6 @@ class _AppearanceSettingsContentState extends State<AppearanceSettingsContent> {
             trailing: const Icon(fluent_ui.FluentIcons.chevron_right, size: 12),
             onTap: () => _showPlayerBackgroundDialog(),
           ),
-          FluentSettingsTile(
-            icon: fluent_ui.FluentIcons.photo_collection,
-            title:
-                '窗口背景${(AuthService().currentUser?.isSponsor ?? false) ? '' : ' 🎁'}',
-            subtitle: _getWindowBackgroundSubtitle(),
-            trailing: const Icon(fluent_ui.FluentIcons.chevron_right, size: 12),
-            onTap: () => _showWindowBackgroundDialog(),
-          ),
         ],
       ),
       const SizedBox(height: 16),
@@ -732,6 +726,19 @@ class _AppearanceSettingsContentState extends State<AppearanceSettingsContent> {
                 size: 12,
               ),
               onTap: () => _showLayoutModeDialog(),
+            ),
+            // 窗口背景（桌面端专属：依赖整个窗口，移动端无「窗口」概念。
+            // 原置于「播放器」分区且无平台守卫，导致移动端也能点进来但弹窗崩溃）
+            FluentSettingsTile(
+              icon: fluent_ui.FluentIcons.photo_collection,
+              title:
+                  '窗口背景${(AuthService().currentUser?.isSponsor ?? false) ? '' : ' 🎁'}',
+              subtitle: _getWindowBackgroundSubtitle(),
+              trailing: const Icon(
+                fluent_ui.FluentIcons.chevron_right,
+                size: 12,
+              ),
+              onTap: () => _showWindowBackgroundDialog(),
             ),
           ],
         ),

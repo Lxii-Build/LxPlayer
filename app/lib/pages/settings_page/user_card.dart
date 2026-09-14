@@ -1472,8 +1472,11 @@ class _UserCardState extends State<UserCard> {
                     ),
                     const SizedBox(width: 12),
                     // 退出按钮
+                    // 走 `_handleLogout` 的二次确认；此前直接调用 `AuthService().logout()`
+                    // 跳过了确认对话框（Cupertino / Fluent 分支都有确认，唯独 Material
+                    // 分支没有），而退出登录不可逆，属于体验缺陷。
                     IconButton(
-                      onPressed: () => AuthService().logout(),
+                      onPressed: () => _handleLogout(context),
                       icon: Icon(Icons.logout_rounded, color: colorScheme.error),
                       tooltip: '退出登录',
                     ),
