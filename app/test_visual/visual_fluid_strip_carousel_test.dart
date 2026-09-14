@@ -20,7 +20,17 @@ Widget _fakeCover(int index, bool compressed) {
     alignment: Alignment.bottomLeft,
     padding: const EdgeInsets.all(12),
     child: compressed
-        ? const SizedBox.shrink()
+        // 压扁卡：与歌单榜/榜单的实现一致，用竖排文字标出这是哪一张。
+        ? const Center(
+            child: RotatedBox(
+              quarterTurns: 1,
+              child: Text('示例条目',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600)),
+            ),
+          )
         : const Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
