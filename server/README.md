@@ -38,7 +38,8 @@ cd server
 
 export JWT_SECRET="请换成一个足够长的随机串"   # 不设置则回退到不安全的 "dev-only-change-me"
 export DB_PATH="lxplayer.db"                   # 默认 lxplayer.db（SQLite 单文件）
-export LISTEN_ADDR=":8080"                     # 默认 :8080
+export LISTEN_ADDR=":10044"                    # 默认 :10044（容器约定端口）
+export ADMIN_PASSWORD="管理端口令"              # 不设置则整个 /admin 管理 API 不可用（503）
 
 go run .
 ```
@@ -52,7 +53,21 @@ go run .
 | --- | --- | --- |
 | `JWT_SECRET` | `dev-only-change-me` | JWT 签名密钥（HS256）。**生产必须改。** |
 | `DB_PATH` | `lxplayer.db` | SQLite 数据库文件路径。 |
-| `LISTEN_ADDR` | `:8080` | 监听地址。 |
+| `LISTEN_ADDR` | `:10044` | 监听地址。 |
+| `ADMIN_PASSWORD` | 空 | 管理端口令。**不设置则整个管理 API 返回 503（安全失败），用户 API 不受影响。** |
+| `ADMIN_JWT_SECRET` | 空 | 管理令牌签名密钥；留空则从 `JWT_SECRET` 做域分隔派生。 |
+| `TRUST_PROXY_HEADERS` | 空 | 置 `1` 时信任 `X-Forwarded-For`（置于反向代理之后才开）。 |
+
+## 管理端
+
+管理端与用户端**彻底隔离**（独立口令、独立签名密钥与 issuer），页面由二进制内嵌，启动后直接访问根路径 `/`：
+
+- 登录：`POST /admin/api/v1/login`（body `{"password":"..."}`）
+- 会话：`GET /admin/api/v1/session`
+- 统计 / 用户：`GET /admin/api/v1/stats`、`GET /admin/api/v1/users`、`DELETE /admin/api/v1/users/{id}`、`POST /admin/api/v1/users/{id}/revoke`
+- 参数：`GET/PUT /admin/api/v1/config`
+
+未配置 `ADMIN_PASSWORD` 时以上接口一律 503。
 
 ## 部署
 
@@ -61,12 +76,21 @@ go run .
 ```bash
 cd server
 docker build -t lxplayer-server .
-docker run -d -p 8080:8080 \
+docker run -d -p 10044:10044 \
   -e JWT_SECRET="<random-long-secret>" \
+  -e ADMIN_PASSWORD="<admin-password>" \
   -e DB_PATH="/data/lxplayer.db" \
   -v lxplayer-data:/data \
   lxplayer-server
 ```
+
+一键脚本：`scripts/deploy-server.sh`（在目标服务器上以 root 执行）。它会创建
+`/opt/lxplayer-server/data`、**首次生成并保存** `credentials.env`（复用旧口令，重建容器
+不会改口令）、起容器并做健康检查 + 管理端登录冒烟。
+
+> 镜像基础说明：构建阶段默认走 `goproxy.cn`（国内可直连，海外可 `--build-arg GOPROXY=...`
+> 覆盖）；运行阶段用 Docker Hub 的 `alpine`（`gcr.io/distroless` 在部分网络不可达），
+> 以 `nobody(65534)` 运行——数据卷目录需 `chown 65534:65534`。
 
 部署注意事项：
 
