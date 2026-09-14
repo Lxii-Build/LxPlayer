@@ -6,7 +6,7 @@ RUN go mod tidy && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/lxp
 
 FROM gcr.io/distroless/static-debian12
 COPY --from=build /out/lxplayer-server /lxplayer-server
-ENV LISTEN_ADDR=:8080
-EXPOSE 8080
+ENV LISTEN_ADDR=:10044
+EXPOSE 10044
 USER nonroot:nonroot
 ENTRYPOINT ["/lxplayer-server"]
