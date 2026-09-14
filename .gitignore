@@ -16,6 +16,7 @@ app/ios/Flutter/ephemeral/
 # 一旦入库会让仓库膨胀且每次构建设置都有差异，务必保持忽略。
 /.pubcache/
 app/.flutter_tool_state
+/.flutter_tool_state
 
 # 签名：注入的密钥库与口令不入库。
 # app/android/keys/lxplayer-release.p12 是故意提交的——CI runner 每次都是新机器，

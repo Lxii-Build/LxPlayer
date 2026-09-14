@@ -17,6 +17,7 @@ import 'home_page/bento_playlist_grid.dart';
 import 'home_page/horizontal_playlist_carousel.dart';
 import 'home_page/mixed_playlist_grid.dart';
 import 'home_page/newsong_cards.dart';
+import 'home_page/swipe_recommend_card.dart';
 import 'home_page/fluid_carousel_sections.dart';
 import 'home_page/mobile_personal_fm.dart';
 import 'home_page/mobile_playlist_grid.dart';
@@ -283,13 +284,19 @@ class _HomeForYouTabState extends State<HomeForYouTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const GreetingHeader(),
-              // 今日推荐：流体形变轮播（#1）——当前卡完整尺寸 + 两侧竖条压扁。
+              // 今日推荐：扇形叠卡（单卡 + 三层扇形封面 + 播放按钮）。
+              // 流体条带只用在「歌单榜」和「榜单」页，这里按用户要求保持原样。
               if (data.dailySongs.isNotEmpty)
-                DailyRecommendCarousel(
-                  songs: data.dailySongs,
-                  onPlay: (track) => _playRecommended(track, data.dailySongs),
-                  onOpenDetail: () =>
-                      widget.onOpenDailyDetail?.call(data.dailySongs),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: SwipeRecommendCard(
+                    tracks: data.dailySongs.map(neteaseSongToTrack).toList(),
+                    onPlay: (track) => _playRecommended(track, data.dailySongs),
+                    onIndexChanged: (index, direction) =>
+                        _onRecommendIndexChanged(direction, data.dailySongs),
+                    onOpenDetail: () =>
+                        widget.onOpenDailyDetail?.call(data.dailySongs),
+                  ),
                 ),
               SizedBox(height: isCupertino ? 24 : 32),
               SectionTitle(title: '私人FM'),
