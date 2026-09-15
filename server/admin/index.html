@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>LxPlayer 后端管理</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- 登录视图 -->
+  <div id="login-view" class="login-view">
+    <form id="login-form" class="login-card" autocomplete="off">
+      <div class="login-brand">
+        <div class="login-logo">Lx</div>
+        <div>
+          <h1>LxPlayer 后端管理</h1>
+          <p class="muted">请输入管理员口令</p>
+        </div>
+      </div>
+      <label class="field">
+        <span class="field-label">管理员口令</span>
+        <input id="login-password" type="password" placeholder="ADMIN_PASSWORD"
+               autocomplete="current-password" required />
+      </label>
+      <button id="login-button" class="btn btn-primary btn-block" type="submit">登录</button>
+      <p id="login-error" class="form-error" hidden></p>
+    </form>
+  </div>
+
+  <!-- 主视图 -->
+  <div id="app-view" class="app-view" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <div class="login-logo small">Lx</div>
+        <span>后端管理</span>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-view="overview">数据概览</button>
+        <button class="nav-item" data-view="users">用户</button>
+        <button class="nav-item" data-view="config">控制与参数</button>
+      </nav>
+      <button id="logout-button" class="nav-item nav-logout">退出登录</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <h2 id="view-title">数据概览</h2>
+        <div class="topbar-actions">
+          <span id="server-version" class="badge badge-info">—</span>
+          <button id="refresh-button" class="btn btn-sm">刷新</button>
+        </div>
+      </header>
+
+      <!-- 概览 -->
+      <section id="view-overview" class="view">
+        <div id="overview-cards" class="card-grid"></div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>近 30 天注册趋势</h3>
+            <span class="muted" id="trend-total"></span>
+          </div>
+          <div id="trend-chart" class="trend-chart"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>存储规模</h3></div>
+          <div id="storage-list" class="kv-list"></div>
+        </div>
+      </section>
+
+      <!-- 用户 -->
+      <section id="view-users" class="view" hidden>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>用户列表</h3>
+            <span class="muted" id="users-count"></span>
+          </div>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>邮箱</th><th>令牌版本</th><th>注册时间</th>
+                  <th>快照版本</th><th>快照大小</th><th class="col-actions">操作</th>
+                </tr>
+              </thead>
+              <tbody id="users-body"></tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <button id="users-prev" class="btn btn-sm">上一页</button>
+            <span id="users-page" class="muted"></span>
+            <button id="users-next" class="btn btn-sm">下一页</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 控制与参数 -->
+      <section id="view-config" class="view" hidden>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>控制开关</h3>
+            <span class="muted">改动立即持久化并生效</span>
+          </div>
+          <div id="config-toggles" class="toggle-list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>参数调整</h3></div>
+          <div id="config-params" class="param-list"></div>
+        </div>
+        <div class="panel-actions">
+          <button id="config-save" class="btn btn-primary">保存修改</button>
+          <button id="config-reset" class="btn">放弃修改</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast-host" class="toast-host"></div>
+  <script src="app.js"></script>
+</body>
+</html>

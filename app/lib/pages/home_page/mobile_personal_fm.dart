@@ -1,0 +1,430 @@
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import '../../models/track.dart';
+import '../../services/player_service.dart';
+import '../../services/playlist_queue_service.dart';
+import '../../utils/theme_manager.dart';
+import '../../utils/image_utils.dart';
+import '../../widgets/lx_surface.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'hero_section.dart'; // 复用 convertToTrack 函数
+import '../../widgets/lx_image_fallback.dart';
+import '../player_page.dart'; // 整卡点击打开全屏播放器
+
+/// 私人FM（移动端）
+class MobilePersonalFm extends StatelessWidget {
+  final List<Map<String, dynamic>> list;
+  const MobilePersonalFm({super.key, required this.list});
+  
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final themeManager = ThemeManager();
+    final isCupertino = (Platform.isIOS || Platform.isAndroid) && themeManager.isCupertinoFramework;
+
+    if (list.isEmpty) return Text('暂无数据', style: Theme.of(context).textTheme.bodySmall);
+    
+    return AnimatedBuilder(
+      animation: PlayerService(),
+      builder: (context, _) {
+        Map<String, dynamic> display = list.first;
+        final current = PlayerService().currentTrack;
+        if (current != null && current.source == MusicSource.netease) {
+          for (final m in list) {
+            final id = (m['id'] ?? (m['song'] != null ? (m['song'] as Map<String, dynamic>)['id'] : null)) as dynamic;
+            if (id != null && id.toString() == current.id.toString()) {
+              display = m;
+              break;
+            }
+          }
+        }
+
+        final album = (display['album'] ?? display['al'] ?? {}) as Map<String, dynamic>;
+        final artists = (display['artists'] ?? display['ar'] ?? []) as List<dynamic>;
+        final artistsText = artists.map((e) => (e as Map<String, dynamic>)['name']?.toString() ?? '').where((e) => e.isNotEmpty).join('/');
+        final pic = (album['picUrl'] ?? '').toString();
+
+        final fmTracks = _convertListToTracks(list);
+        final isFmCurrent = _currentTrackInList(fmTracks);
+        final isFmQueue = _isSameQueueAs(fmTracks);
+        final isFmPlaying = PlayerService().isPlaying && (isFmCurrent || isFmQueue);
+
+        // 整卡可点：打开全屏播放器。入口与迷你播放器一致（`mini_player.dart` 的
+        // `_openFullPlayer`），修掉此前「整卡有水波纹却点了没反应」的死点击。
+        final void Function() onOpenPlayer = () => _openFullPlayer(context);
+
+        // 表面（玻璃 / Fluent 卡 / 实心）由 LxSurface 统一决定，这里只决定内容形态：
+        // Fluent 与 Cupertino 沿用紧凑行（含各自的控件样式），其余走 Material 表现力布局。
+        // 原先三条分支各自手写的容器（写死配色 + 投影 + 渐变）全部撤掉。
+        final bool useCompactContent = themeManager.isFluentFramework || isCupertino;
+        final Widget content = useCompactContent
+            ? _buildOldCardContent(context, pic, display, artistsText, isFmPlaying, fmTracks, isFmQueue, isFmCurrent, cs, isCupertino)
+            // Material 分支保留整卡可点（水波纹）：Material + InkWell 原样保留，
+            // 只把圆角对齐到统一表面的 _surfaceRadius。
+            : Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onOpenPlayer,
+                  borderRadius: BorderRadius.circular(_surfaceRadius),
+                  child: _buildMaterialFmContent(context, pic, display, artistsText, isFmPlaying, fmTracks, isFmQueue, isFmCurrent, cs),
+                ),
+              );
+
+        return LxSurface(
+          borderRadius: _surfaceRadius,
+          child: content,
+        );
+      },
+    );
+  }
+
+  /// 与首页推荐卡（`swipe_recommend_card.dart`）一致的统一圆角。
+  static const double _surfaceRadius = 28;
+
+  /// 打开全屏播放器。
+  ///
+  /// 转场与迷你播放器 `_openFullPlayer` 逐字一致（同一套 `PageRouteBuilder`），
+  /// 避免两处入口手感不同。
+  void _openFullPlayer(BuildContext context) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierColor: Colors.transparent,
+        maintainState: true,
+        pageBuilder: (context, animation, secondaryAnimation) => const PlayerPage(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          const begin = Offset(0.0, 1.0);
+          const end = Offset.zero;
+          const curve = Curves.easeOutCubic;
+
+          final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+          final offsetAnimation = animation.drive(tween);
+
+          return SlideTransition(
+            position: offsetAnimation,
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+        reverseTransitionDuration: const Duration(milliseconds: 250),
+      ),
+    );
+  }
+
+  /// 这里的样式代码主要是为了兼容旧版和其他主题
+  Widget _buildOldCardContent(
+    BuildContext context, 
+    String pic, 
+    Map<String, dynamic> display, 
+    String artistsText,
+    bool isFmPlaying,
+    List<Track> fmTracks,
+    bool isFmQueue,
+    bool isFmCurrent,
+    ColorScheme cs,
+    bool isCupertino,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: CachedNetworkImage(imageUrl: pic, httpHeaders: getImageHeaders(pic), width: 120, height: 120, fit: BoxFit.cover, errorWidget: (context, url, error) => const LxImageFallback(),),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(display['name']?.toString() ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Text(artistsText, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodySmall),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          _buildControls(context, isFmPlaying, fmTracks, isFmQueue, isFmCurrent, cs, isCupertino),
+        ],
+      ),
+    );
+  }
+
+  /// Android 16 表现力风格内容 - Redesigned for better control placement
+  Widget _buildMaterialFmContent(
+    BuildContext context, 
+    String pic, 
+    Map<String, dynamic> display, 
+    String artistsText,
+    bool isFmPlaying,
+    List<Track> fmTracks,
+    bool isFmQueue,
+    bool isFmCurrent,
+    ColorScheme cs,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // Album Art - Fixed Size
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: CachedNetworkImage(imageUrl: pic, httpHeaders: getImageHeaders(pic), width: 120, height: 120, fit: BoxFit.cover, errorWidget: (context, url, error) => const LxImageFallback(),),
+            ),
+          ),
+          const SizedBox(width: 20),
+          // 信息列（标题 / 艺人 / 右下角控件）。抽成 FmInfoColumn 以便脱离封面
+          // （CachedNetworkImage 依赖平台通道）单独做「大字号不溢出」的回归测试。
+          Expanded(
+            child: FmInfoColumn(
+              title: display['name']?.toString() ?? '',
+              subtitle: artistsText,
+              isPlaying: isFmPlaying,
+              onSkip: () => _handleSkipAction(fmTracks),
+              onPlayPause: () => _handlePlayAction(context, fmTracks, isFmPlaying, isFmQueue, isFmCurrent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControls(BuildContext context, bool isFmPlaying, List<Track> fmTracks, bool isFmQueue, bool isFmCurrent, ColorScheme cs, bool isCupertino) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        isCupertino 
+            ? CupertinoButton(
+                padding: const EdgeInsets.all(8),
+                onPressed: () => _handlePlayAction(context, fmTracks, isFmPlaying, isFmQueue, isFmCurrent),
+                child: Icon(
+                  isFmPlaying ? CupertinoIcons.pause_fill : CupertinoIcons.play_fill, 
+                  color: ThemeManager.iosBlue,
+                  size: 28,
+                ),
+              )
+            : IconButton(
+                onPressed: () => _handlePlayAction(context, fmTracks, isFmPlaying, isFmQueue, isFmCurrent),
+                style: IconButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: Icon(isFmPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: cs.onSurface),
+              ),
+        const SizedBox(width: 8),
+        isCupertino 
+            ? CupertinoButton(
+                padding: const EdgeInsets.all(8),
+                onPressed: () => _handleSkipAction(fmTracks),
+                child: Icon(
+                  CupertinoIcons.forward_fill, 
+                  color: ThemeManager.iosBlue,
+                  size: 28,
+                ),
+              )
+            : IconButton(
+                onPressed: () => _handleSkipAction(fmTracks),
+                style: IconButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: Icon(Icons.skip_next_rounded, color: cs.onSurface),
+              ),
+      ],
+    );
+  }
+
+  Future<void> _handlePlayAction(BuildContext context, List<Track> fmTracks, bool isFmPlaying, bool isFmQueue, bool isFmCurrent) async {
+    final tracks = fmTracks;
+    if (tracks.isEmpty) return;
+    final ps = PlayerService();
+    if (isFmPlaying) {
+      await ps.pause();
+    } else if (ps.isPaused && (isFmQueue || isFmCurrent)) {
+      await ps.resume();
+    } else {
+      PlaylistQueueService().setQueue(tracks, 0, QueueSource.playlist);
+      await ps.playTrack(tracks.first);
+      if (context.mounted) {
+         try {
+           ScaffoldMessenger.of(context).showSnackBar(
+             const SnackBar(content: Text('开始播放私人FM'), duration: Duration(seconds: 1)),
+           );
+         } catch (_) {}
+      }
+    }
+  }
+
+  Future<void> _handleSkipAction(List<Track> fmTracks) async {
+    final tracks = fmTracks;
+    if (tracks.isEmpty) return;
+    if (_isSameQueueAs(tracks)) {
+      await PlayerService().playNext();
+    } else {
+      final startIndex = tracks.length > 1 ? 1 : 0;
+      PlaylistQueueService().setQueue(tracks, startIndex, QueueSource.playlist);
+      await PlayerService().playTrack(tracks[startIndex]);
+    }
+  }
+
+  List<Track> _convertListToTracks(List<Map<String, dynamic>> src) {
+    return src.map((m) => convertToTrack(m)).toList();
+  }
+
+  bool _isSameQueueAs(List<Track> tracks) {
+    final q = PlaylistQueueService().queue;
+    if (q.length != tracks.length) return false;
+    for (var i = 0; i < q.length; i++) {
+      if (q[i].id.toString() != tracks[i].id.toString() || q[i].source != tracks[i].source) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _currentTrackInList(List<Track> tracks) {
+    final ct = PlayerService().currentTrack;
+    if (ct == null) return false;
+    return tracks.any((t) => t.id.toString() == ct.id.toString() && t.source == ct.source);
+  }
+}
+
+/// 私人 FM（Material 表现力风格）右侧信息列：标题 + 艺人 + 右下角播放/切歌控件。
+///
+/// 从 `MobilePersonalFm._buildMaterialFmContent` 里抽出来单独成一个组件，原因有二：
+///   1. 「容器高度随系统字号自适应」的逻辑有了唯一归属；
+///   2. 能脱离 `CachedNetworkImage`（它的 `DefaultCacheManager` 要走
+///      `path_provider` 平台通道，纯 widget 测试里拿不到）单独渲染，从而在大字号
+///      下断言不溢出。
+class FmInfoColumn extends StatelessWidget {
+  const FmInfoColumn({
+    super.key,
+    required this.title,
+    required this.subtitle,
+    required this.isPlaying,
+    required this.onSkip,
+    required this.onPlayPause,
+  });
+
+  final String title;
+  final String subtitle;
+  final bool isPlaying;
+  final VoidCallback onSkip;
+  final VoidCallback onPlayPause;
+
+  /// 正常字号下的基准高度，与改造前的写死值（120）逐像素一致。
+  static const double baseHeight = 120;
+
+  /// 容器高度随系统字号放大，避免大字被固定高度压出 `RenderFlex overflowed`。
+  ///
+  /// 用标题字号（20）的实际缩放比推算，而不是 `scale(1.0)`——非线性字号缩放器
+  /// 下小字号的缩放比接近 1，拿它当基准会让容器几乎不增高、大字号仍会溢出。
+  ///
+  /// 下限锁在 [baseHeight]：正常字号（含系统「缩小字号」）下与改造前**完全一致**
+  /// （恒为 120），只有字号被放大时才按比例增高。
+  static double heightFor(TextScaler textScaler) {
+    final double factor = textScaler.scale(20) / 20;
+    return baseHeight * (factor < 1 ? 1 : factor);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: heightFor(MediaQuery.textScalerOf(context)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Text Content at the top
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: cs.onSurface,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: cs.onSurface.withOpacity(0.6),
+            ),
+          ),
+          const Spacer(),
+          // Controls Cluster - Grouped in the bottom right
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              // Skip Button - Subtle Surface
+              _buildControlBtn(
+                onPressed: onSkip,
+                icon: Icon(Icons.skip_next_rounded, color: cs.onSurface.withOpacity(0.8), size: 26),
+                bgColor: cs.surfaceContainerHighest.withOpacity(0.5),
+                size: 40,
+              ),
+              const SizedBox(width: 12),
+              // Play Button - Primary Prominent
+              _buildControlBtn(
+                onPressed: onPlayPause,
+                icon: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: cs.onPrimary, size: 30),
+                bgColor: cs.primary,
+                size: 52,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControlBtn({
+    required VoidCallback onPressed,
+    required Widget icon,
+    required Color bgColor,
+    double size = 48,
+  }) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(size / 3), // Dynamic rounded square
+        boxShadow: [
+          if (bgColor != Colors.transparent && bgColor != Colors.transparent.withOpacity(0.5))
+            BoxShadow(
+              color: bgColor.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(size / 3),
+          child: Center(child: icon),
+        ),
+      ),
+    );
+  }
+}

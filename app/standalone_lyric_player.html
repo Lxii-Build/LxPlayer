@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apple Music-like Lyric Animation (Faithful Port)</title>
+    <style>
+        :root {
+            --amll-lp-font-size: max(max(5vh, 2.5vw), 24px);
+            --amll-lp-color: white;
+            --amll-lp-hover-bg-color: rgba(255, 255, 255, 0.1);
+            --amll-lp-line-width: 80%;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        .amll-lyric-player {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+            color: var(--amll-lp-color);
+            contain: strict;
+            font-size: var(--amll-lp-font-size);
+            user-select: none;
+            box-sizing: content-box;
+            z-index: 1;
+            line-height: 1.2em;
+        }
+
+        .lyricLine {
+            position: absolute;
+            background-color: transparent;
+            backface-visibility: hidden;
+            transform-origin: left center;
+            width: var(--amll-lp-line-width);
+            left: 10%;
+            height: fit-content;
+            padding: 0.5em 1em;
+            contain: content;
+            will-change: transform, filter, opacity;
+            box-sizing: border-box;
+            border-radius: 0.25em;
+
+            /* CSS Transitions for non-spring properties */
+            transition:
+                opacity 0.25s,
+                filter 0.2s,
+                background-color 0.25s;
+
+            /* Default State */
+            opacity: 1;
+        }
+
+        .lyricLine:hover {
+            background-color: var(--amll-lp-hover-bg-color);
+        }
+
+        .lyricMainLine {
+            margin: -0.5em;
+            /* Compensate for word padding */
+            padding: 0.5em;
+            white-space: pre-wrap;
+            word-break: keep-all;
+            overflow-wrap: break-word;
+            font-weight: 700;
+        }
+
+        /* Word Helper Styles */
+        .lyricWord {
+            display: inline-block;
+            white-space: pre-wrap;
+            padding: 0.5em;
+            /* Large padding for mask gradient space */
+            margin: -0.5em;
+            will-change: transform, mask-position;
+        }
+
+        /* Interlude Dots */
+        .interludeDots {
+            height: clamp(0.5em, 1vh, 3em);
+            transition: opacity 0.25s;
+            transform-origin: center;
+            width: fit-content;
+            padding: 0;
+            /* Removed large padding */
+            position: absolute;
+            display: flex;
+            gap: 0.4em;
+            /* Gap between dots */
+            left: 10%;
+            /* Match lyricLine left */
+            opacity: 0;
+            z-index: 2;
+        }
+
+        .interludeDots.enabled {
+            opacity: 1;
+        }
+
+        .interludeDots>span {
+            width: 0.6em;
+            /* Relative size */
+            height: 0.6em;
+            display: inline-block;
+            border-radius: 50%;
+            background-color: var(--amll-lp-color);
+            opacity: 0.25;
+            /* Base opacity */
+        }
+
+        /* Controls & Progress Bar */
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 600px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .progress-track {
+            position: relative;
+            width: 100%;
+            height: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .progressBar {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+            z-index: 2;
+            /* Above markers */
+        }
+
+        .progressBar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .progressBar::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .markers {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            transform: translateY(-50%);
+            pointer-events: none;
+            z-index: 1;
+            /* Below thumb, above track */
+        }
+
+        .marker {
+            position: absolute;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.4);
+            border-left: 1px solid rgba(0, 0, 0, 0.5);
+            border-right: 1px solid rgba(0, 0, 0, 0.5);
+            box-sizing: border-box;
+        }
+
+        .marker-dot {
+            /* Alternative: clean dots */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="lyric-player" class="amll-lyric-player">
+        <!-- Lines injected here -->
+    </div>
+
+    <div class="controls">
+        <div class="progress-track">
+            <div class="markers" id="markers-container"></div>
+            <input type="range" id="progress-bar" class="progressBar" min="0" max="70000" step="100" value="0">
+        </div>
+    </div>
+
+    <script>
+        /**
+         * PORTED UTILS
+         */
+
+        // Easings
+        function easeInOutBack(x) {
+            const c1 = 1.70158;
+            const c2 = c1 * 1.525;
+            return x < 0.5
+                ? ((2 * x) ** 2 * ((c2 + 1) * 2 * x - c2)) / 2
+                : ((2 * x - 2) ** 2 * ((c2 + 1) * (x * 2 - 2) + c2) + 2) / 2;
+        }
+
+        function easeOutExpo(x) {
+            return x === 1 ? 1 : 1 - 2 ** (-10 * x);
+        }
+
+        const clamp = (min, cur, max) => Math.max(min, Math.min(cur, max));
+
+        // Interlude Dots Class
+        class InterludeDots {
+            constructor() {
+                this.element = document.createElement("div");
+                this.element.className = 'interludeDots';
+                this.dot0 = document.createElement("span");
+                this.dot1 = document.createElement("span");
+                this.dot2 = document.createElement("span");
+                this.element.appendChild(this.dot0);
+                this.element.appendChild(this.dot1);
+                this.element.appendChild(this.dot2);
+
+                this.left = 0;
+                this.top = 0;
+                this.playing = true;
+                this.lastStyle = "";
+                this.currentInterlude = null;
+                this.currentTime = 0;
+                this.targetBreatheDuration = 1500;
+            }
+
+            getElement() { return this.element; }
+
+            setTransform(left, top) {
+                this.left = left;
+                this.top = top;
+            }
+
+            setInterlude(interlude) {
+                if (this.currentInterlude?.[0] === interlude?.[0] && this.currentInterlude?.[1] === interlude?.[1]) {
+                    if (interlude && !this.element.classList.contains('enabled')) this.element.classList.add('enabled');
+                    return;
+                }
+
+                this.currentInterlude = interlude;
+
+                if (interlude) {
+                    this.element.classList.add('enabled');
+                    // We don't necessarily reset time here if we are syncing with playback time
+                } else {
+                    this.element.classList.remove('enabled');
+                }
+            }
+
+            update(timestamp) {
+                this.currentTime = timestamp;
+
+                let curStyle = `transform:translate(${this.left.toFixed(2)}px, ${this.top.toFixed(2)}px)`;
+
+                if (this.currentInterlude) {
+                    const start = this.currentInterlude[0];
+                    const end = this.currentInterlude[1];
+                    const interludeDuration = end - start;
+                    const currentDuration = this.currentTime - start;
+
+                    if (currentDuration <= interludeDuration && currentDuration >= 0) {
+                        const breatheDuration = interludeDuration / Math.ceil(interludeDuration / this.targetBreatheDuration);
+                        let scale = 1;
+                        let globalOpacity = 1;
+
+                        scale *= Math.sin(1.5 * Math.PI - (currentDuration / breatheDuration) * 2) / 20 + 1;
+
+                        // Entry
+                        if (currentDuration < 2000) {
+                            scale *= easeOutExpo(currentDuration / 2000);
+                        }
+
+                        if (currentDuration < 500) {
+                            globalOpacity = 0;
+                        } else if (currentDuration < 1000) {
+                            globalOpacity *= (currentDuration - 500) / 500;
+                        }
+
+                        // Exit
+                        if (interludeDuration - currentDuration < 750) {
+                            scale *= 1 - easeInOutBack((750 - (interludeDuration - currentDuration)) / 750 / 2);
+                        }
+                        if (interludeDuration - currentDuration < 375) {
+                            globalOpacity *= clamp(0, (interludeDuration - currentDuration) / 375, 1);
+                        }
+
+                        const dotsDuration = Math.max(0, interludeDuration - 750);
+                        scale = Math.max(0, scale) * 0.7;
+
+                        curStyle += ` scale(${scale})`;
+
+                        const dot0Opacity = clamp(0.25, ((currentDuration * 3) / dotsDuration) * 0.75, 1);
+                        const dot1Opacity = clamp(0.25, (((currentDuration - dotsDuration / 3) * 3) / dotsDuration) * 0.75, 1);
+                        const dot2Opacity = clamp(0.25, (((currentDuration - (dotsDuration / 3) * 2) * 3) / dotsDuration) * 0.75, 1);
+
+                        this.dot0.style.opacity = clamp(0, Math.max(0, globalOpacity * dot0Opacity), 1);
+                        this.dot1.style.opacity = clamp(0, Math.max(0, globalOpacity * dot1Opacity), 1);
+                        this.dot2.style.opacity = clamp(0, Math.max(0, globalOpacity * dot2Opacity), 1);
+
+                    } else {
+                        curStyle += " scale(0)";
+                        this.dot0.style.opacity = "0";
+                        this.dot1.style.opacity = "0";
+                        this.dot2.style.opacity = "0";
+                    }
+                }
+
+                this.element.setAttribute("style", curStyle);
+            }
+        }
+
+        // From packages/core/src/utils/spring.ts
+        function getVelocity(currentSolver) {
+            return (t) => {
+                const dt = 0.0001;
+                return (currentSolver(t + dt) - currentSolver(t)) / dt;
+            };
+        }
+
+        function solveSpring(from, velocity, to, delay = 0, params = {}) {
+            const soft = params.soft || false;
+            const stiffness = params.stiffness || 100;
+            const damping = params.damping || 10;
+            const mass = params.mass || 1;
+            const delta = to - from;
+
+            if (soft || 1.0 <= damping / (2.0 * Math.sqrt(stiffness * mass))) {
+                const angular_frequency = -Math.sqrt(stiffness / mass);
+                const leftover = -angular_frequency * delta - velocity;
+                return (t) => {
+                    t -= delay;
+                    if (t < 0) return from;
+                    return to - (delta + t * leftover) * Math.E ** (t * angular_frequency);
+                };
+            }
+            const damping_frequency = Math.sqrt(4.0 * mass * stiffness - damping ** 2.0);
+            const leftover = (damping * delta - 2.0 * mass * velocity) / damping_frequency;
+            const dfm = (0.5 * damping_frequency) / mass;
+            const dm = -(0.5 * damping) / mass;
+            return (t) => {
+                t -= delay;
+                if (t < 0) return from;
+                return (
+                    to -
+                    (Math.cos(t * dfm) * delta + Math.sin(t * dfm) * leftover) *
+                    Math.E ** (t * dm)
+                );
+            };
+        }
+
+        class Spring {
+            constructor(currentPosition = 0) {
+                this.currentPosition = currentPosition;
+                this.targetPosition = currentPosition;
+                this.currentTime = 0;
+                this.params = {};
+                this.currentSolver = () => this.targetPosition;
+                this.getV = () => 0;
+                this.queuePosition = undefined;
+            }
+
+            resetSolver() {
+                const curV = this.getV(this.currentTime);
+                this.currentTime = 0;
+                this.currentSolver = solveSpring(this.currentPosition, curV, this.targetPosition, 0, this.params);
+                this.getV = getVelocity(this.currentSolver);
+            }
+
+            updateParams(params) {
+                this.params = { ...this.params, ...params };
+                this.resetSolver();
+            }
+
+            setTargetPosition(targetPosition, delay = 0) {
+                if (delay > 0) {
+                    this.queuePosition = { position: targetPosition, time: delay };
+                } else {
+                    this.queuePosition = undefined;
+                    this.targetPosition = targetPosition;
+                    this.resetSolver();
+                }
+            }
+
+            setPosition(position) {
+                this.currentPosition = position;
+                this.targetPosition = position;
+                this.currentSolver = () => this.targetPosition;
+                this.getV = () => 0;
+                this.currentTime = 0;
+                this.queuePosition = undefined;
+            }
+
+            update(delta = 0) {
+                this.currentTime += delta;
+                this.currentPosition = this.currentSolver(this.currentTime);
+                if (this.queuePosition) {
+                    this.queuePosition.time -= delta;
+                    if (this.queuePosition.time <= 0) this.setTargetPosition(this.queuePosition.position, 0);
+                }
+            }
+
+            getCurrentPosition() { return this.currentPosition; }
+        }
+
+        // From packages/core/src/lyric-player/dom/lyric-line.ts (found in tool output)
+        function generateFadeGradient(width, padding = 0, bright = "rgba(255,255,255,var(--bright-mask-alpha, 1.0))", dark = "rgba(255,255,255,var(--dark-mask-alpha, 0.4))") { // Changed dark alpha default to 0.4 to match idle state
+            const totalAspect = 2 + width + padding;
+            const widthInTotal = width / totalAspect;
+            const leftPos = (1 - widthInTotal) / 2;
+            // Gradient: Bright (Active) -> Dark (Inactive)
+            // Actually the logic in lyric-line.ts seems to produce a gradient that we SLIDE.
+            // Let's trust the logic:
+            // linear-gradient(to right, bright Start%, dark End%)
+            // This looks like a sharp transition or smooth?
+            // It's `bright leftPos*100%, dark (leftPos+widthInTotal)*100%`
+            // So distinct bright then dark? No, it's a gradient from pos1 to pos2.
+            // If widthInTotal is massive, it covers most.
+            return [
+                `linear-gradient(to right, ${bright} ${leftPos * 100}%, ${dark} ${(leftPos + widthInTotal) * 100}%)`,
+                totalAspect
+            ];
+        }
+
+        /**
+         * Main Player Logic
+         */
+        /**
+         * Main Player Logic
+         */
+        const INTRO_DELAY = 4000; // Force intro gap
+        const lyricsData = [
+            { time: 0, text: "Oh, hush, my dear, it's been a difficult year" },
+            { time: 4000, text: "And terrors don't prey on" },
+            { time: 6000, text: "Innocent victims" },
+            { time: 8000, text: "Trust me, darlin', trust me, darlin'" },
+            { time: 11000, text: "It's been a loveless year" },
+            { time: 14000, text: "I'm a man of three fears" },
+            { time: 16500, text: "Integrity, faith and" },
+            { time: 18500, text: "Crocodile tears" },
+            { time: 20500, text: "Trust me, darlin', trust me, darlin'" },
+            { time: 24000, text: "So look me in the eyes" },
+            { time: 27000, text: "Tell me what you see" },
+            { time: 29500, text: "Perfect paradise" },
+            { time: 36000, text: "Tearing at the seams" }, // Increased gap for demo!
+            { time: 39000, text: "I wish I could escape" },
+            { time: 42000, text: "I don't wanna fake it" },
+            { time: 44500, text: "Wish I could erase it" },
+            { time: 47000, text: "Make your heart believe" },
+            { time: 50000, text: "But I'm a bad liar, bad liar" },
+            { time: 54000, text: "Now you know" },
+            { time: 56000, text: "Now you know" },
+            { time: 58000, text: "I'm a bad liar, bad liar" },
+            { time: 62000, text: "Now you know, you're free to go" },
+            { time: 66000, text: "Did all my dreams never mean one thing?" },
+            { time: 70000, text: "Does happiness lie in a diamond ring?" }
+        ].map((line, i, arr) => {
+            // Shift timings for intro
+            const shiftedTime = line.time + INTRO_DELAY;
+            const nextLineTime = (arr[i + 1]?.time || (line.time + 3000)) + INTRO_DELAY;
+
+            // Gap logic:
+            // If the next line is more than 4s away, we force a gap by capping this line's duration.
+            const rawDuration = nextLineTime - shiftedTime;
+            let lineDuration = rawDuration;
+            let actualEndTime = nextLineTime;
+
+            if (rawDuration > 4000) {
+                // Force an interlude gap
+                lineDuration = rawDuration - 2500; // Leave 2.5s gap
+                if (lineDuration < 2000) lineDuration = 2000; // Min duration 2s
+                actualEndTime = shiftedTime + lineDuration;
+            }
+
+            // Mock Word Timings
+            const words = line.text.split(' ').map(t => t + ' ');
+            const step = lineDuration / words.length;
+
+            return {
+                ...line,
+                time: shiftedTime, // Sync time for layout loop
+                endTime: actualEndTime,
+                startTime: shiftedTime,
+                words: words.map((w, j) => ({
+                    text: w,
+                    startTime: shiftedTime + (j * step),
+                    endTime: shiftedTime + ((j + 1) * step),
+                    duration: step
+                }))
+            };
+        });
+
+        const posYSpringParams = { mass: 0.9, damping: 15, stiffness: 90 };
+        const scaleSpringParams = { mass: 2, damping: 25, stiffness: 100 };
+        const ALIGN_POSITION = 0.35;
+        const WORD_FADE_WIDTH = 0.5; // Guessing factor, lyric-line uses getter
+
+        const playerEl = document.getElementById('lyric-player');
+        const linesHelper = [];
+
+        // Init DOM
+        lyricsData.forEach((line, index) => {
+            const el = document.createElement('div');
+            el.className = 'lyricLine';
+            const main = document.createElement('div');
+            main.className = 'lyricMainLine';
+
+            const wordEls = [];
+            line.words.forEach((w, i) => {
+                const span = document.createElement('span');
+                span.className = 'lyricWord';
+                span.innerText = w.text;
+
+                // Initial Styles
+                // Inactive words are handled via Mask in the full implementation
+                // But here let's set defaults
+
+                main.appendChild(span);
+                wordEls.push({
+                    span,
+                    data: w,
+                    width: 0,
+                    padding: 0,
+                    height: 0
+                });
+            });
+
+            el.appendChild(main);
+            playerEl.appendChild(el);
+
+            const helper = {
+                el,
+                index,
+                data: line,
+                wordEls,
+                height: 0,
+                springs: {
+                    posY: new Spring(window.innerHeight * 0.5),
+                    scale: new Spring(100)
+                }
+            };
+
+            helper.springs.posY.updateParams(posYSpringParams);
+            helper.springs.scale.updateParams(scaleSpringParams);
+            linesHelper.push(helper);
+        });
+
+        // Measurement & Mask Generation
+        function measure() {
+            linesHelper.forEach(l => {
+                l.height = l.el.clientHeight;
+
+                // Measure Words
+                l.wordEls.forEach(w => {
+                    w.width = w.span.clientWidth;
+                    w.height = w.span.clientHeight;
+                    // Get padding from style (0.5em)
+                    // Easier to get computing style strictly
+                    const style = getComputedStyle(w.span);
+                    w.padding = parseFloat(style.paddingLeft);
+                    w.width = w.span.clientWidth - w.padding * 2; // Content width
+                    w.height = w.span.clientHeight - w.padding * 2;
+                });
+
+                // Generate Masks (Static Setup)
+                generateMasks(l);
+            });
+        }
+
+        function generateMasks(lineHelper) {
+            // Ported from lyric-line.ts generateWebAnimationBasedMaskImage logic (simplified for setup)
+            lineHelper.wordEls.forEach(w => {
+                const fadeWidth = w.height * WORD_FADE_WIDTH;
+                // The gradient logic expects width ratio
+                const [maskImage, totalAspect] = generateFadeGradient(fadeWidth / (w.width + w.padding * 2));
+                const totalAspectStr = `${totalAspect * 100}% 100%`;
+
+                w.span.style.maskImage = maskImage;
+                w.span.style.webkitMaskImage = maskImage;
+                w.span.style.maskRepeat = 'no-repeat';
+                w.span.style.webkitMaskRepeat = 'no-repeat';
+                w.span.style.maskSize = totalAspectStr;
+                w.span.style.webkitMaskSize = totalAspectStr;
+
+                // Initial Position (All Dark/Inactive)
+                // Logic: Mask slides. 
+                // We need to set it so it shows the "Dark" part (inactive).
+                // Based on logic, we animate 'maskPosition'.
+            });
+        }
+
+        function updateWordAnimations(lineHelper, loopTime) {
+            if (!lineHelper) return;
+
+            // We calculate the animation for the WHOLE line's words once (or check if valid)
+            // To match original strictly, we generate keyframes based on timings.
+
+            lineHelper.wordEls.forEach((w, i, arr) => {
+                // Check if already animating
+                if (w.animating) {
+                    // If loopTime reset (user seek backwards), cancel?
+                    // Simple check: if animation finished but time says it shouldn't have?
+                    // For now assume linear playback.
+                    return;
+                }
+
+                // Optimization: Only animate if within range
+                // But we need to setup the full animation sequence once line becomes active/near.
+
+                const fadeWidth = w.height * WORD_FADE_WIDTH;
+                const widthBeforeSelf = arr.slice(0, i).reduce((acc, curr) => acc + curr.width + curr.padding * 2, 0) + (arr[0] ? fadeWidth : 0); // approximate?
+                // Actually the port logic in lyric-line.ts lines 712 is complex accum.
+                // Simplified Logic: 
+                // We just animate this word's mask.
+                // Start: -TotalWidth (Mask on right/inactive)
+                // End: 0 (Mask on left/active)
+
+                // Wait, mask gradient is: [Bright (Active) ... Dark (Inactive)]
+                // Sliding it RIGHT (pos going up) reveals Bright?
+                // Let's check `clampOffset`. minOffset is negative. clampOffset returns neg or 0.
+                // It animates from `curPos` (calculated as neg) -> ...
+
+                // OK, I will implement a simplified heuristic that matches the visual:
+                // Animate maskPosition from -100% to 0% to "fill" color.
+
+                // Re-read generateWebAnimationBasedMaskImage:
+                // It creates a single animation for the word that syncs with its play time.
+
+                const timeStart = w.data.startTime;
+                const timeEnd = w.data.endTime;
+
+                // We need to trigger this animation so it plays exactly at timeStart relative to loopTime.
+                // WAAPI delay = timeStart - loopTime.
+
+                const delay = timeStart - loopTime;
+                const duration = timeEnd - timeStart;
+
+                // Skip if too far in past
+                if (delay < -duration - 1000) return;
+
+                // Float Animation
+                // Defined in lines 479: translateY(0) -> translateY(-up)
+                // with composite 'add'.
+                // Starts at startTime.
+                w.floatAnim = w.span.animate([
+                    { transform: 'translateY(0)' },
+                    { transform: 'translateY(-0.05em)' }
+                ], {
+                    delay: delay,
+                    duration: Math.max(1000, duration),
+                    fill: 'both',
+                    easing: 'ease-out',
+                    composite: 'add'
+                });
+
+                // Mask Animation (Karaoke)
+                // We need to sweep the mask.
+                // Gradient:  [Bright ... Dark]
+                // MaskSize: >100% 100%
+                // We want to shift it so initially we see Dark, then Bright takes over.
+                // Typically mask-position: 100% 0 (Right, Dark) -> 0% 0 (Left, Bright).
+                // Or calculated pixels.
+
+                // Using pixel logic from TS:
+                // curPos starts negative. 
+                // It seems to slide the gradient window.
+
+                const wTotal = w.width + w.padding * 2 + fadeWidth; // Approx total width of mask gradient
+                // Start: Show Inactive (Right side of gradient). Position: -wTotal px?
+                // End: Show Active (Left side). Position: 0px.
+
+                // Let's try animating background-position / mask-position X.
+
+                w.maskAnim = w.span.animate([
+                    { maskPosition: `${-wTotal}px 0` }, // Start (Hidden/Dark)
+                    { maskPosition: `0px 0` }           // End (Visible/Bright)
+                ], {
+                    delay: delay,
+                    duration: duration,
+                    fill: 'both',
+                    easing: 'linear' // Karaoke usually linear fill
+                });
+
+                w.animating = true;
+            });
+        }
+
+        function resetAnimations() {
+            linesHelper.forEach(l => {
+                l.wordEls.forEach(w => {
+                    if (w.floatAnim) w.floatAnim.cancel();
+                    if (w.maskAnim) w.maskAnim.cancel();
+                    w.animating = false;
+                    // Reset styles
+                    // w.span.style.transform = ''; // handled by cancel?
+                });
+            });
+        }
+
+        measure();
+        window.addEventListener('resize', measure);
+
+        // State
+        let startTime = 0;
+        let currentScrollIndex = 0;
+        let playerHeight = window.innerHeight;
+
+        // Progress Control State
+        let currentSongTime = 0;
+        let isDragging = false;
+        let isPlaying = true;
+
+        const progressBar = document.getElementById('progress-bar');
+        const markersContainer = document.getElementById('markers-container');
+
+        // Init Markers
+        const SONG_DURATION = 70000;
+        progressBar.max = SONG_DURATION;
+
+        // Detect Interludes (>2s gaps)
+        // Also include Intro [0, lyricsData[0].time] if gap exists
+        const startGap = lyricsData[0].startTime;
+        if (startGap > 2000) {
+            createMarker(0, startGap);
+        }
+
+        for (let i = 0; i < lyricsData.length - 1; i++) {
+            const currentEnd = lyricsData[i].endTime;
+            const nextStart = lyricsData[i + 1].startTime; // Using shifted times
+            if (nextStart - currentEnd > 2000) {
+                createMarker(currentEnd, nextStart);
+            }
+        }
+
+        function createMarker(start, end) {
+            const m = document.createElement('div');
+            m.className = 'marker';
+            const left = (start / SONG_DURATION) * 100;
+            const width = ((end - start) / SONG_DURATION) * 100;
+            m.style.left = `${left}%`;
+            m.style.width = `${width}%`;
+            markersContainer.appendChild(m);
+        }
+
+        // Controls Events
+        progressBar.addEventListener('mousedown', () => { isDragging = true; });
+        progressBar.addEventListener('mouseup', () => { isDragging = false; });
+        progressBar.addEventListener('input', (e) => {
+            currentSongTime = parseFloat(e.target.value);
+            resetAnimations();
+            interludeDots.setInterlude(null); // Clear immediate visual
+            // Let loop pick up new state
+        });
+
+        // Initial
+        const interludeDots = new InterludeDots();
+        playerEl.appendChild(interludeDots.getElement());
+
+        updateLayoutTargets(0);
+        requestAnimationFrame(loop);
+
+        function loop(timestamp) {
+            if (!loop.lastFrame) loop.lastFrame = timestamp;
+            const dt = (timestamp - loop.lastFrame); // ms
+            loop.lastFrame = timestamp;
+
+            if (isPlaying && !isDragging) {
+                currentSongTime += dt;
+                if (currentSongTime > SONG_DURATION) currentSongTime = 0; // Loop song
+                // Update UI
+                progressBar.value = currentSongTime;
+            }
+
+            const loopTime = currentSongTime;
+
+            // Loop Reset (Logic moved to simple modulo above or explicit reset)
+            if (currentSongTime === 0) {
+                resetAnimations();
+                currentScrollIndex = -1;
+                interludeDots.setInterlude(null);
+            }
+
+            // 1. Find active index
+            let activeIndex = 0;
+            for (let i = 0; i < lyricsData.length; i++) {
+                if (loopTime >= lyricsData[i].time) {
+                    activeIndex = i;
+                }
+            }
+
+            // 2. Update Layout & Trigger Animations
+            if (currentScrollIndex !== activeIndex || Math.abs(loopTime - loop.lastLayoutTime) > 200) {
+                // Force update occasionally to catch interlude changes? 
+                // Actually, if interlude changes state (enters/leaves), we need to recalc layout targets.
+                // Ideally check if Active Interlude Changed.
+                const currentInterlude = getActiveInterlude(loopTime);
+                const lastInterlude = loop.lastInterlude;
+                const interludeChanged = (currentInterlude?.start !== lastInterlude?.start);
+
+                if (currentScrollIndex !== activeIndex || interludeChanged) {
+                    currentScrollIndex = activeIndex;
+                    loop.lastInterlude = currentInterlude;
+                    updateLayoutTargets(activeIndex, currentInterlude);
+                }
+                loop.lastLayoutTime = loopTime;
+            }
+
+            // Check animations for active/nearby lines
+            if (linesHelper[activeIndex]) {
+                updateWordAnimations(linesHelper[activeIndex], loopTime);
+            }
+
+            // Update Interlude Dots
+            interludeDots.update(loopTime);
+
+            // 3. Springs
+            // dt is already calculated at the top in ms. Springs need seconds.
+            const statsDt = dt / 1000;
+
+            if (statsDt > 0.1) { requestAnimationFrame(loop); return; }
+
+            linesHelper.forEach(l => {
+                l.springs.posY.update(statsDt);
+                l.springs.scale.update(statsDt);
+                const y = l.springs.posY.getCurrentPosition();
+                const s = l.springs.scale.getCurrentPosition() / 100;
+                l.el.style.transform = `translateY(${y.toFixed(1)}px) scale(${s.toFixed(4)})`;
+            });
+
+            requestAnimationFrame(loop);
+        }
+
+        function getActiveInterlude(time) {
+            // Check Intro
+            const firstStart = lyricsData[0].startTime;
+            if (firstStart > 2000 && time < firstStart) {
+                return { start: 0, end: firstStart, lineIndex: -1 };
+            }
+
+            for (let i = 0; i < lyricsData.length - 1; i++) {
+                const end = lyricsData[i].endTime;
+                const nextStart = lyricsData[i + 1].startTime;
+                if (nextStart - end > 2000) {
+                    // Check if time is within this window (or slightly passed? Interlude dots should disappear when next line starts singing?)
+                    // Logic from base.ts is strict: `time >= start && time <= end`? (implied by rendering)
+                    if (time >= end && time <= nextStart) {
+                        return { start: end, end: nextStart, lineIndex: i };
+                    }
+                }
+            }
+            return null;
+        }
+
+        function updateLayoutTargets(targetIndex, activeInterlude) {
+            playerHeight = playerEl.clientHeight;
+
+            let scrollOffset = 0;
+            // Calculate height of lines BEFORE target
+            // But if we have dynamic spacing, "scrollOffset" must include those spaces if they are BEFORE targetIndex.
+            // Simplified: We assume Active Interlude is usually AT targetIndex or close.
+            // If dynamic spacing is permanent for active duration, we should iterate to calculate accurate scrollOffset.
+
+            // Re-calc scroll offset including potential gaps
+            scrollOffset = 0;
+            const DOT_HEIGHT = 20; // Approx height of dots
+            const DOT_MARGIN = 30; // Margin on each side
+            const INTERLUDE_TOTAL_HEIGHT = DOT_HEIGHT + (DOT_MARGIN * 2);
+
+            // Account for intro interlude pushing everything down
+            if (activeInterlude && activeInterlude.lineIndex === -1) {
+                scrollOffset += INTERLUDE_TOTAL_HEIGHT;
+            }
+
+            for (let i = 0; i < targetIndex; i++) {
+                scrollOffset += linesHelper[i].height;
+                // If there was an active interlude after line i, and before targetIndex
+                if (activeInterlude && activeInterlude.lineIndex === i) {
+                    scrollOffset += INTERLUDE_TOTAL_HEIGHT;
+                }
+            }
+
+            let curPos = -scrollOffset + playerHeight * ALIGN_POSITION;
+            curPos -= linesHelper[targetIndex].height / 2;
+
+            let delay = 0;
+            let baseDelay = 0.05;
+
+            // Handle Intro Dots Positioning relative to layout
+            if (activeInterlude && activeInterlude.lineIndex === -1) {
+                // Intro active. Dots are BEFORE Line 0.
+                // curPos is currently at Top of the layout (effectively Top of Line 0).
+                // We want dots to be placed *before* Line 0 starts.
+                // Because we added INTERLUDE_TOTAL_HEIGHT to scrollOffset, curPos is pulled UP by that amount.
+                // Actually:
+                // If Target=0. ScrollOffset = INTERLUDE.
+                // curPos = -INTERLUDE + Center - Height0/2.
+                // So curPos is the TOP of Line 0.
+                // Wait. If ScrollOffset includes Interlude, then "0" is at "Interlude + Line 0".
+                // So `curPos` (0) should be calculating the *visual* top of the block starting at Interlude?
+                // No. `curPos` is identifying where the *first line* should go?
+                // Usually `l.springs` sets target to `curPos`.
+
+                // If Target=0. We want Line 0 to be at Center.
+                // So ScrollOffset should ONLY be Line 0 stuff?
+                // If we include Interlude in ScrollOffset, then we are scrolling *past* the interlude to center Line 0.
+                // Yes, Line 0 is active. So Interlude is "above" it (scrolled partially out?).
+                // If we want Interlude to be visible above Line 0:
+                // Line 0 is at Center.
+                // Interlude starts at Center - InterludeHeight.
+
+                // So:
+                // Place Dots at `curPos - DOT_MARGIN - DOT_HEIGHT`.
+
+                // But wait. If we added to scrollOffset, `curPos` is lower?
+                // `curPos = -scrollOffset`. Larger offset => Lower curPos value?
+                // No. `translateY` is usually positive.
+                // `scrollOffset` is how much we have "scrolled past".
+                // If we added Interlude to offset, we effectively say "we scrolled past interlude".
+
+                // Let's rely on relative placement:
+                // `curPos` is the target Y for `l` (Line 0).
+                // Dots should be ABOVE `curPos`.
+                const dotsY = curPos - DOT_MARGIN - DOT_HEIGHT;
+                interludeDots.setTransform(0, dotsY);
+                interludeDots.setInterlude([activeInterlude.start, activeInterlude.end]);
+
+                // If we want Line 0 to move down to make room?
+                // If Interlude is part of the flow, Line 0 should be *positioned* after it.
+                // But if Line 0 is the *target*, we want Line 0 at the CENTER `ALIGN_POSITION`.
+                // So the Interlude sits above the center. Correct.
+            }
+
+            linesHelper.forEach((l, i) => {
+                const isActive = i === targetIndex;
+                l.springs.posY.setTargetPosition(curPos, delay);
+                l.springs.scale.setTargetPosition(isActive ? 100 : 97);
+
+                let blur = 0;
+                let opacity = 1;
+
+                if (isActive) {
+                    blur = 0;
+                    opacity = 1;
+                } else {
+                    blur = 1;
+                    if (i < targetIndex) blur += Math.abs(targetIndex - i) + 1;
+                    else blur += Math.abs(i - targetIndex);
+                    opacity = 0.5;
+                }
+                blur = Math.min(8, blur);
+                l.el.style.filter = `blur(${blur}px)`;
+                l.el.style.opacity = opacity;
+
+                if (curPos >= 0) {
+                    delay += baseDelay;
+                    if (i >= targetIndex) baseDelay /= 1.05;
+                }
+                curPos += l.height;
+
+                // Gap After active line?
+                if (activeInterlude && activeInterlude.lineIndex === i) {
+                    // Spacing!
+                    // We are at Bottom of Line i.
+                    curPos += DOT_MARGIN; // Add margin before dots
+
+                    const dotsY = curPos; // Dots top
+                    interludeDots.setTransform(0, dotsY);
+                    interludeDots.setInterlude([activeInterlude.start, activeInterlude.end]);
+
+                    curPos += DOT_HEIGHT; // Dots height
+                    curPos += DOT_MARGIN; // Margin after dots
+                    // Now curPos is ready for the Top of Line i+1
+                }
+            });
+
+            // If no active interlude, hide dots
+            if (!activeInterlude) {
+                interludeDots.setInterlude(null);
+            }
+        }
+        updateLayoutTargets(0);
+        requestAnimationFrame(loop);
+
+    </script>
+</body>
+
+</html>

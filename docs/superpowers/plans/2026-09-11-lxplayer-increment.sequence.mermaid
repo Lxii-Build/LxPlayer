@@ -1,0 +1,97 @@
+%% LxPlayer 增量关键调用流程（2026-09-11）
+%% 每个 section 可单独渲染
+
+%% =========================================================
+%% (1) 推荐卡：松手提交 + 取消/回退  (P1-2)
+%% =========================================================
+sequenceDiagram
+    autonumber
+    actor U as 用户
+    participant Card as SwipeRecommendCard
+    participant P as SwipeGesturePolicy
+    participant A as SwipeAnimations
+    participant PS as PlayerService
+
+    U->>Card: onHorizontalDragStart
+    Card->>Card: _dx=_dy=0; _committed=false; _pressed=true
+    U->>Card: onHorizontalDragUpdate(delta)
+    Card->>Card: _dx+=delta.dx; _dy+=delta.dy
+    Card->>P: decide(_dx,_dy)
+    alt failToVertical (|dy|>=24 且 >|dx|)
+        P-->>Card: failToVertical
+        Card->>Card: _abandoned=true (让位页面滚动)
+    else |dx|>=36 (拖动中不提交，仅可视反馈)
+        P-->>Card: commitNext / commitPrev
+        Card->>Card: 记录候选方向，卡片保持静止
+    else 12<=|dx|<36
+        P-->>Card: pending
+    else |dx|<12
+        P-->>Card: ignore
+    end
+    U->>Card: onHorizontalDragEnd
+    Card->>P: decide(_dx,_dy)  ## 松手时判定
+    alt decide in {commitNext, commitPrev}
+        Card->>Card: _commit(dir): wrapIndex + onIndexChanged
+        Card->>A: 入场动画 260ms (方向=dir)
+    else 未达阈值 / 让位
+        Card->>A: cancelDuration 180ms 回弹 + 释放按压
+    end
+
+%% =========================================================
+%% (2) 播放键三态  (P1-4)
+%% =========================================================
+sequenceDiagram
+    autonumber
+    participant B as 播放键(_CardBody)
+    participant PS as PlayerService
+    B->>PS: AnimatedBuilder 监听 (notifyListeners)
+    alt currentTrack?.id != featured.id
+        B-->>B: PlayButtonState.idle ("播放")
+    else isPlaying
+        B-->>B: PlayButtonState.playingCurrent ("暂停")
+    else isPaused
+        B-->>B: PlayButtonState.pausedCurrent ("继续播放")
+    end
+    Note over B,PS: idle->onPlay(playTrack); playingCurrent->pause(); pausedCurrent->resume()
+
+%% =========================================================
+%% (3) 账号后端切换  (P2-3)  —— 默认 official，逐字不变
+%% =========================================================
+sequenceDiagram
+    autonumber
+    actor U as 用户
+    participant NS as network_settings
+    participant ABS as AccountBackendService
+    participant SP as SharedPreferences
+    participant AS as AuthService
+    participant Go as 自研Go服务(未部署)
+
+    Note over ABS: 默认 mode=official -> 输出与现状逐字一致
+    U->>NS: 填自研地址 + 切到"自研账号后端"
+    NS->>ABS: setMode(selfHosted, url)
+    ABS->>SP: 写 account_backend_mode=1 / account_backend_url=url
+    ABS-->>NS: notifyListeners()
+    U->>AS: 登录
+    AS->>ABS: loginUri()
+    alt official
+        ABS-->>AS: '${UrlService().baseUrl}/auth/login'
+    else selfHosted
+        ABS-->>AS: '$url/api/v1/auth/login'
+    end
+    AS->>Go: POST (字段/响应需适配层，见 U3)
+
+%% =========================================================
+%% (4) 视觉证据：CI golden 基准  (P3-1)
+%% =========================================================
+sequenceDiagram
+    autonumber
+    participant Dev as 开发(无本地SDK)
+    participant CI as GitHub Actions
+    participant H as 人工审阅
+    CI->>CI: workflow_dispatch(update_goldens=true)
+    CI->>CI: flutter test --update-goldens test/golden
+    CI->>CI: upload-artifact golden-baselines-$sha
+    H->>H: 下载 PNG 目视审查
+    H->>Dev: 通过 -> 提交基准到 test/golden/goldens/
+    Dev->>CI: push 基准
+    CI->>CI: 常规 job flutter test (含 golden 比对) 回归

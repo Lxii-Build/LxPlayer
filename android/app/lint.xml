@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<lint>
-    <!-- MediaStore 查询的权限在运行时申请；静态分析看不到 Activity 里的请求流程。 -->
-    <issue id="MissingPermission" severity="warning" />
-</lint>

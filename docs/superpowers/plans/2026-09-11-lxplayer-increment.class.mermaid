@@ -1,0 +1,147 @@
+classDiagram
+    direction LR
+
+    %% ===== 既有（增量中仅被观察/复用，不改语义）=====
+    class PlayerService {
+      <<ChangeNotifier singleton>>
+      +PlayerState state
+      +Track? currentTrack
+      +bool isPlaying
+      +bool isPaused
+      +bool isLoading
+      +ValueNotifier~Color?~ themeColorNotifier
+      +playTrack(Track) Future~void~
+      +togglePlayPause() Future~void~
+      +pause() Future~void~
+      +resume() Future~void~
+    }
+
+    class PlayerState {
+      <<enum>>
+      idle
+      loading
+      playing
+      paused
+      error
+    }
+
+    class UrlService {
+      <<ChangeNotifier singleton>>
+      +BackendSourceType sourceType
+      +String baseUrl
+      +String customBaseUrl
+      +setCustomBaseUrl(String)
+      +useOfficialSource()
+    }
+
+    class AuthService {
+      <<ChangeNotifier singleton>>
+      +login(...)
+      +register(...)
+      +validateToken(...)
+    }
+
+    class SwipeGesturePolicy {
+      <<static>>
+      +double activateThreshold = 12
+      +double failVerticalThreshold = 24
+      +double commitThreshold = 36
+      +Duration enterDuration = 260ms
+      +double enterOffset = 40
+      +decide(dx, dy) SwipeDecision
+      +wrapIndex(cur, dir, size) int
+      +directionOf(decision) int
+    }
+
+    %% ===== 新增 / 增量 =====
+    class SwipeAnimations {
+      <<static NEW>>
+      +Duration cancelDuration = 180ms
+      +Curve cancelCurve
+      +double pressScale = 0.97
+      +Duration pressDuration = 120ms
+    }
+
+    class PlayButtonState {
+      <<enum NEW>>
+      idle
+      playingCurrent
+      pausedCurrent
+    }
+
+    class SwipeRecommendCard {
+      <<StatefulWidget>>
+      +List~Track~ tracks
+      +onPlay(Track)
+      +onIndexChanged(int, int)
+      +onOpenDetail()  %% NEW P1-1
+      +bool animateEntrance
+      +_resolvePlayState(Track) PlayButtonState  %% NEW P1-4
+      +_commit(direction, decision)              %% P1-2 onEnd
+    }
+
+    class LxSurface {
+      <<StatelessWidget NEW P1-3>>
+      +Widget child
+      +double radius
+      +EdgeInsetsGeometry padding
+      +LxSurfaceVariant variant
+      +build(context)
+    }
+
+    class LxSurfaceVariant {
+      <<enum NEW>>
+      card
+      control
+    }
+
+    class AccountBackendMode {
+      <<enum NEW P2-3>>
+      official
+      selfHosted
+    }
+
+    class AccountBackendConfig {
+      <<NEW>>
+      +AccountBackendMode mode
+      +String selfHostedBaseUrl
+      +String apiPrefix
+    }
+
+    class AccountBackendService {
+      <<ChangeNotifier singleton NEW P2-3>>
+      +AccountBackendConfig config
+      +bool isSelfHosted
+      +initialize()
+      +setMode(AccountBackendMode, String)
+      +loginUri() Uri
+      +registerUri() Uri
+      +meUri() Uri
+      +snapshotUri() Uri
+    }
+
+    class PermissionService {
+      <<singleton>>
+      +requestNotificationPermission() Future~bool~
+      +requestIgnoreBatteryOptimizations() Future~bool~
+      +requestMediaAudio() Future~bool~   %% NEW P2-1
+    }
+
+    class LocalLibraryService {
+      <<singleton>>
+      +pickAndScanFolder()
+    }
+
+    %% ===== 关系 =====
+    PlayerService --> PlayerState : state
+    SwipeRecommendCard ..> SwipeGesturePolicy : decide()
+    SwipeRecommendCard ..> SwipeAnimations : enter/cancel/press
+    SwipeRecommendCard ..> PlayButtonState : resolves
+    SwipeRecommendCard ..> PlayerService : observes (AnimatedBuilder)
+    SwipeRecommendCard --> LxSurface : wraps _CardBody
+    LxSurface --> LxSurfaceVariant : uses
+    AuthService ..> AccountBackendService : account endpoints (NEW)
+    AccountBackendService ..> UrlService : official fallback
+    AccountBackendService --> AccountBackendConfig : holds
+    AccountBackendConfig --> AccountBackendMode : mode
+    LocalLibraryService ..> PermissionService : requestMediaAudio() before scan
